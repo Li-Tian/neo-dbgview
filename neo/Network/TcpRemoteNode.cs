@@ -1,4 +1,5 @@
-﻿using Neo.IO;
+﻿using DbgViewTR;
+using Neo.IO;
 using System;
 using System.IO;
 using System.Net;
@@ -18,62 +19,76 @@ namespace Neo.Network
         public TcpRemoteNode(LocalNode localNode, IPEndPoint remoteEndpoint)
             : base(localNode)
         {
+            TR.Enter();
             this.socket = new Socket(remoteEndpoint.Address.IsIPv4MappedToIPv6 ? AddressFamily.InterNetwork : remoteEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             this.ListenerEndpoint = remoteEndpoint;
+            TR.Exit();
         }
 
         public TcpRemoteNode(LocalNode localNode, Socket socket)
             : base(localNode)
         {
+            TR.Enter();
             this.socket = socket;
             OnConnected();
+            TR.Exit();
         }
 
         public async Task<bool> ConnectAsync()
         {
+            TR.Enter();
             IPAddress address = ListenerEndpoint.Address;
             if (address.IsIPv4MappedToIPv6)
                 address = address.MapToIPv4();
             try
             {
+                TR.Log(ListenerEndpoint.ToString());
                 await socket.ConnectAsync(address, ListenerEndpoint.Port);
+                TR.Log();
                 OnConnected();
+                TR.Log();
             }
             catch (SocketException)
             {
+                TR.Log();
                 Disconnect(false);
-                return false;
+                return TR.Exit(false);
             }
-            return true;
+            return TR.Exit(true);
         }
 
         public override void Disconnect(bool error)
         {
+            TR.Enter();
             if (Interlocked.Exchange(ref disposed, 1) == 0)
             {
                 if (stream != null) stream.Dispose();
                 socket.Dispose();
                 base.Disconnect(error);
             }
+            TR.Exit();
         }
 
         private void OnConnected()
         {
+            TR.Enter();
             IPEndPoint remoteEndpoint = (IPEndPoint)socket.RemoteEndPoint;
             RemoteEndpoint = new IPEndPoint(remoteEndpoint.Address.MapToIPv6(), remoteEndpoint.Port);
             stream = new NetworkStream(socket);
             connected = true;
+            TR.Exit();
         }
 
         protected override async Task<Message> ReceiveMessageAsync(TimeSpan timeout)
         {
+            TR.Enter();
             CancellationTokenSource source = new CancellationTokenSource(timeout);
             //Stream.ReadAsync doesn't support CancellationToken
             //see: https://stackoverflow.com/questions/20131434/cancel-networkstream-readasync-using-tcplistener
             source.Token.Register(() => Disconnect(false));
             try
             {
-                return await Message.DeserializeFromAsync(stream, source.Token);
+                return TR.Exit(await Message.DeserializeFromAsync(stream, source.Token));
             }
             catch (ArgumentException) { }
             catch (ObjectDisposedException) { }
@@ -85,13 +100,14 @@ namespace Neo.Network
             {
                 source.Dispose();
             }
-            return null;
+            return TR.Exit((Message)null);
         }
 
         protected override async Task<bool> SendMessageAsync(Message message)
         {
+            TR.Enter();
             if (!connected) throw new InvalidOperationException();
-            if (disposed > 0) return false;
+            if (disposed > 0) return TR.Exit(false);
             byte[] buffer = message.ToArray();
             CancellationTokenSource source = new CancellationTokenSource(30000);
             //Stream.WriteAsync doesn't support CancellationToken
@@ -100,7 +116,7 @@ namespace Neo.Network
             try
             {
                 await stream.WriteAsync(buffer, 0, buffer.Length, source.Token);
-                return true;
+                return TR.Exit(true);
             }
             catch (ObjectDisposedException) { }
             catch (Exception ex) when (ex is IOException || ex is OperationCanceledException)
@@ -111,7 +127,7 @@ namespace Neo.Network
             {
                 source.Dispose();
             }
-            return false;
+            return TR.Exit(false);
         }
     }
 }
