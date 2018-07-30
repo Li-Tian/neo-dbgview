@@ -1,4 +1,5 @@
-﻿using Neo.Cryptography;
+﻿using DbgViewTR;
+using Neo.Cryptography;
 using Neo.IO;
 using Neo.IO.Json;
 using Neo.Network;
@@ -27,6 +28,7 @@ namespace Neo.Core
         {
             get
             {
+                TR.Enter();
                 if (_header == null)
                 {
                     _header = new Header
@@ -39,8 +41,9 @@ namespace Neo.Core
                         NextConsensus = NextConsensus,
                         Script = Script
                     };
+                    TR.Log("Initialize Header");
                 }
-                return _header;
+                return TR.Exit(_header);
             }
         }
 
@@ -53,11 +56,12 @@ namespace Neo.Core
 
         public static Fixed8 CalculateNetFee(IEnumerable<Transaction> transactions)
         {
+            TR.Enter();
             Transaction[] ts = transactions.Where(p => p.Type != TransactionType.MinerTransaction && p.Type != TransactionType.ClaimTransaction).ToArray();
             Fixed8 amount_in = ts.SelectMany(p => p.References.Values.Where(o => o.AssetId == Blockchain.UtilityToken.Hash)).Sum(p => p.Value);
             Fixed8 amount_out = ts.SelectMany(p => p.Outputs.Where(o => o.AssetId == Blockchain.UtilityToken.Hash)).Sum(p => p.Value);
             Fixed8 amount_sysfee = ts.Sum(p => p.SystemFee);
-            return amount_in - amount_out - amount_sysfee;
+            return TR.Exit(amount_in - amount_out - amount_sysfee);
         }
 
         /// <summary>
@@ -66,6 +70,7 @@ namespace Neo.Core
         /// <param name="reader">数据来源</param>
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             base.Deserialize(reader);
             Transactions = new Transaction[reader.ReadVarInt(0x10000)];
             if (Transactions.Length == 0) throw new FormatException();
@@ -75,6 +80,7 @@ namespace Neo.Core
             }
             if (MerkleTree.ComputeRoot(Transactions.Select(p => p.Hash).ToArray()) != MerkleRoot)
                 throw new FormatException();
+            TR.Exit();
         }
 
         /// <summary>
@@ -84,9 +90,10 @@ namespace Neo.Core
         /// <returns>返回对象是否相等</returns>
         public bool Equals(Block other)
         {
-            if (ReferenceEquals(this, other)) return true;
-            if (ReferenceEquals(null, other)) return false;
-            return Hash.Equals(other.Hash);
+            TR.Enter();
+            if (ReferenceEquals(this, other)) return TR.Exit(true);
+            if (ReferenceEquals(null, other)) return TR.Exit(false);
+            return TR.Exit(Hash.Equals(other.Hash));
         }
 
         /// <summary>
@@ -101,6 +108,7 @@ namespace Neo.Core
 
         public static Block FromTrimmedData(byte[] data, int index, Func<UInt256, Transaction> txSelector)
         {
+            TR.Enter();
             Block block = new Block();
             using (MemoryStream ms = new MemoryStream(data, index, data.Length - index, false))
             using (BinaryReader reader = new BinaryReader(ms))
@@ -113,7 +121,7 @@ namespace Neo.Core
                     block.Transactions[i] = txSelector(reader.ReadSerializable<UInt256>());
                 }
             }
-            return block;
+            return TR.Exit(block);
         }
 
         /// <summary>
@@ -122,7 +130,8 @@ namespace Neo.Core
         /// <returns>返回区块的HashCode</returns>
         public override int GetHashCode()
         {
-            return Hash.GetHashCode();
+            TR.Enter();
+            return TR.Exit(Hash.GetHashCode());
         }
 
         /// <summary>
@@ -130,7 +139,9 @@ namespace Neo.Core
         /// </summary>
         public void RebuildMerkleRoot()
         {
+            TR.Enter();
             MerkleRoot = MerkleTree.ComputeRoot(Transactions.Select(p => p.Hash).ToArray());
+            TR.Exit();
         }
 
         /// <summary>
@@ -139,8 +150,10 @@ namespace Neo.Core
         /// <param name="writer">存放序列化后的数据</param>
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             base.Serialize(writer);
             writer.Write(Transactions);
+            TR.Exit();
         }
 
         /// <summary>
@@ -149,9 +162,10 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["tx"] = Transactions.Select(p => p.ToJson()).ToArray();
-            return json;
+            return TR.Exit(json);
         }
 
         /// <summary>
@@ -160,6 +174,7 @@ namespace Neo.Core
         /// <returns>返回只包含区块头和交易Hash的字节数组</returns>
         public byte[] Trim()
         {
+            TR.Enter();
             using (MemoryStream ms = new MemoryStream())
             using (BinaryWriter writer = new BinaryWriter(ms))
             {
@@ -167,7 +182,7 @@ namespace Neo.Core
                 writer.Write((byte)1); writer.Write(Script);
                 writer.Write(Transactions.Select(p => p.Hash).ToArray());
                 writer.Flush();
-                return ms.ToArray();
+                return TR.Exit(ms.ToArray());
             }
         }
 
@@ -178,19 +193,20 @@ namespace Neo.Core
         /// <returns>返回该区块的合法性，返回true即为合法，否则，非法。</returns>
         public bool Verify(bool completely)
         {
-            if (!Verify()) return false;
+            TR.Enter();
+            if (!Verify()) return TR.Exit(false);
             if (Transactions[0].Type != TransactionType.MinerTransaction || Transactions.Skip(1).Any(p => p.Type == TransactionType.MinerTransaction))
-                return false;
+                return TR.Exit(false);
             if (completely)
             {
                 if (NextConsensus != Blockchain.GetConsensusAddress(Blockchain.Default.GetValidators(Transactions).ToArray()))
-                    return false;
+                    return TR.Exit(false);
                 foreach (Transaction tx in Transactions)
-                    if (!tx.Verify(Transactions.Where(p => !p.Hash.Equals(tx.Hash)))) return false;
+                    if (!tx.Verify(Transactions.Where(p => !p.Hash.Equals(tx.Hash)))) return TR.Exit(false);
                 Transaction tx_gen = Transactions.FirstOrDefault(p => p.Type == TransactionType.MinerTransaction);
-                if (tx_gen?.Outputs.Sum(p => p.Value) != CalculateNetFee(Transactions)) return false;
+                if (tx_gen?.Outputs.Sum(p => p.Value) != CalculateNetFee(Transactions)) return TR.Exit(false);
             }
-            return true;
+            return TR.Exit(true);
         }
     }
 }

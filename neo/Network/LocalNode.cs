@@ -95,15 +95,15 @@ namespace Neo.Network
 
         private async void AcceptPeers()
         {
-            TR.Log("AcceptPeers() >");
 #if !NET47
             //There is a bug in .NET Core 2.0 that blocks async method which returns void.
             await Task.Yield();
 #endif
-            TR.Log("AcceptPeers() >>");
+            TR.Enter();
             while (!cancellationTokenSource.IsCancellationRequested)
             {
                 Socket socket;
+                IndentContext ic = TR.SaveContextAndShuffle();
                 try
                 {
                     socket = await listener.AcceptSocketAsync();
@@ -116,10 +116,14 @@ namespace Neo.Network
                 {
                     continue;
                 }
+                finally
+                {
+                    TR.RestoreContext(ic);
+                }
                 TcpRemoteNode remoteNode = new TcpRemoteNode(this, socket);
                 OnConnected(remoteNode);
             }
-            TR.Log("AcceptPeers() <");
+            TR.Exit();
         }
 
         private static bool AddTransaction(Transaction tx)
@@ -316,7 +320,9 @@ namespace Neo.Network
                 IPHostEntry entry;
                 try
                 {
+                    IndentContext ic = TR.SaveContextAndShuffle();
                     entry = await Dns.GetHostEntryAsync(hostNameOrAddress);
+                    TR.RestoreContext(ic);
                 }
                 catch (SocketException)
                 {
@@ -380,7 +386,9 @@ namespace Neo.Network
                     IPEndPoint seed;
                     try
                     {
+                        IndentContext ic = TR.SaveContextAndShuffle();
                         seed = GetIPEndpointFromHostPortAsync(p[0], int.Parse(p[1])).Result;
+                        TR.RestoreContext(ic);
                     }
                     catch (AggregateException)
                     {
@@ -411,8 +419,9 @@ namespace Neo.Network
                         continue;
 
                     TR.Log(ipEndPoint.ToString());
+                    IndentContext iu = TR.SaveContextAndShuffle();
                     var connectTask = ConnectToPeerAsync(ipEndPoint);
-                    TR.Log(connectTask.ToString());
+                    TR.RestoreContext(iu);
 
                     // Completed tasks that run synchronously may use a non-unique cached task object.
                     if (connectTask.IsCompleted)
@@ -500,6 +509,7 @@ namespace Neo.Network
                     Thread.Sleep(100);
                 }
             }
+            TR.Log("ConnectToPeersLoop() exit!!!");
             TR.Exit();
         }
 
@@ -618,6 +628,7 @@ namespace Neo.Network
                     {
                         IPAddress address = new IPAddress(reader.ReadBytes(4));
                         int port = reader.ReadUInt16();
+                        TR.Log("{0}:{1}", address, port);
                         unconnectedPeers.Add(new IPEndPoint(address.MapToIPv6(), port));
                     }
                 }
@@ -823,6 +834,7 @@ namespace Neo.Network
                         && LocalAddresses.All(p => !p.IsIPv4MappedToIPv6 || IsIntranetAddress(p))
                         && await UPnP.DiscoverAsync())
                     {
+                        TR.Log();
                         try
                         {
                             LocalAddresses.Add((await UPnP.GetExternalIPAsync()).MapToIPv6());
@@ -847,7 +859,9 @@ namespace Neo.Network
                         {
                             listener.Start();
                             Port = (ushort)port;
+                            IndentContext ic = TR.SaveContextAndShuffle();
                             AcceptPeers();
+                            TR.RestoreContext(ic);
                         }
                         catch (SocketException) { }
                     }

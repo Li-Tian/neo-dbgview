@@ -1,4 +1,5 @@
-﻿using Neo.Core;
+﻿using DbgViewTR;
+using Neo.Core;
 using Neo.Cryptography;
 using Neo.Cryptography.ECC;
 using Neo.IO;
@@ -42,6 +43,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
 
         public LevelDBBlockchain(string path)
         {
+            TR.Enter();
             header_index.Add(GenesisBlock.Hash);
             Version version;
             Slice value;
@@ -114,10 +116,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
             thread_persistence.Name = "LevelDBBlockchain.PersistBlocks";
             thread_persistence.Priority = ThreadPriority.AboveNormal;
             thread_persistence.Start();
+            TR.Exit();
         }
 
         public override bool AddBlock(Block block)
         {
+            TR.Enter();
             lock (block_cache)
             {
                 if (!block_cache.ContainsKey(block.Hash))
@@ -138,11 +142,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
                 if (block.Index < header_index.Count)
                     new_block_event.Set();
             }
-            return true;
+            return TR.Exit(true);
         }
 
         public void AddBlockDirectly(Block block)
         {
+            TR.Exit();
             if (block.Index != Height + 1)
                 throw new InvalidOperationException();
             if (block.Index == header_index.Count)
@@ -157,10 +162,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
                 Persist(block);
                 OnPersistCompleted(block);
             }
+            TR.Exit();
         }
 
         protected internal override void AddHeaders(IEnumerable<Header> headers)
         {
+            TR.Enter();
             lock (header_index)
             {
                 lock (header_cache)
@@ -178,29 +185,34 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     header_cache.Clear();
                 }
             }
+            TR.Exit();
         }
 
         public override bool ContainsBlock(UInt256 hash)
         {
-            return GetHeader(hash)?.Index <= current_block_height;
+            TR.Enter();
+            return TR.Exit(GetHeader(hash)?.Index <= current_block_height);
         }
 
         public override bool ContainsTransaction(UInt256 hash)
         {
+            TR.Enter();
             Slice value;
-            return db.TryGet(ReadOptions.Default, SliceBuilder.Begin(DataEntryPrefix.DATA_Transaction).Add(hash), out value);
+            return TR.Exit(db.TryGet(ReadOptions.Default, SliceBuilder.Begin(DataEntryPrefix.DATA_Transaction).Add(hash), out value));
         }
 
         public override bool ContainsUnspent(UInt256 hash, ushort index)
         {
+            TR.Enter();
             UnspentCoinState state = db.TryGet<UnspentCoinState>(ReadOptions.Default, DataEntryPrefix.ST_Coin, hash);
-            if (state == null) return false;
-            if (index >= state.Items.Length) return false;
-            return !state.Items[index].HasFlag(CoinState.Spent);
+            if (state == null) return TR.Exit(false);
+            if (index >= state.Items.Length) return TR.Exit(false);
+            return TR.Exit(!state.Items[index].HasFlag(CoinState.Spent));
         }
 
         public override void Dispose()
         {
+            TR.Enter();
             disposed = true;
             new_block_event.Set();
             if (!thread_persistence.ThreadState.HasFlag(ThreadState.Unstarted))
@@ -211,42 +223,48 @@ namespace Neo.Implementations.Blockchains.LevelDB
                 db.Dispose();
                 db = null;
             }
+            TR.Exit();
         }
 
         public override AccountState GetAccountState(UInt160 script_hash)
         {
+            TR.Log();
             return db.TryGet<AccountState>(ReadOptions.Default, DataEntryPrefix.ST_Account, script_hash);
         }
 
         public override AssetState GetAssetState(UInt256 asset_id)
         {
+            TR.Log();
             return db.TryGet<AssetState>(ReadOptions.Default, DataEntryPrefix.ST_Asset, asset_id);
         }
 
         public override Block GetBlock(UInt256 hash)
         {
+            TR.Log();
             return GetBlockInternal(ReadOptions.Default, hash);
         }
 
         public override UInt256 GetBlockHash(uint height)
         {
-            if (current_block_height < height) return null;
+            TR.Enter();
+            if (current_block_height < height) return TR.Exit((UInt256)null);
             lock (header_index)
             {
-                if (header_index.Count <= height) return null;
-                return header_index[(int)height];
+                if (header_index.Count <= height) return TR.Exit((UInt256)null);
+                return TR.Exit(header_index[(int)height]);
             }
         }
 
         private Block GetBlockInternal(ReadOptions options, UInt256 hash)
         {
+            TR.Enter();
             Slice value;
             if (!db.TryGet(options, SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(hash), out value))
-                return null;
+                return TR.Exit((Block)null);
             int height;
             Block block = Block.FromTrimmedData(value.ToArray(), sizeof(long), p => GetTransaction(options, p, out height));
-            if (block.Transactions.Length == 0) return null;
-            return block;
+            if (block.Transactions.Length == 0) return TR.Exit((Block)null);
+            return TR.Exit(block);
         }
 
         public override ContractState GetContract(UInt160 hash)

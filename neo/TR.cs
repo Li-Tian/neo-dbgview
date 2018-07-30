@@ -19,6 +19,7 @@ namespace DbgViewTR
         public string method_name;
         public string method_full_name;
         public int thread_id;
+        public string thread_name;
         public int? task_id;
         public DbgData(StackFrame sf)
         {
@@ -38,6 +39,7 @@ namespace DbgViewTR
             method_full_name = mb.ReflectedType.ToString() + "#" + mb.ToString();
             thread_id = Thread.CurrentThread.ManagedThreadId;
             task_id = Task.CurrentId;
+            thread_name = Thread.CurrentThread.Name;
         }
 
         public IndentKey GetIndentKey()
@@ -46,9 +48,28 @@ namespace DbgViewTR
         }
     }
 
-    class IndentUnit
+    public class IndentContext
     {
         private int indent = 1;
+        private int context_id = 0;
+
+        public IndentContext()
+        {
+            indent = 1;
+            ShuffleContext();
+        }
+
+        public IndentContext(IndentContext iu)
+        {
+            this.indent = iu.indent;
+            this.context_id = iu.context_id;
+        }
+
+        public void ShuffleContext()
+        {
+            context_id = IndentManager.GetInstance().GetNextContextId();
+        }
+
         public void Indent()
         {
             lock(this)
@@ -71,7 +92,7 @@ namespace DbgViewTR
                 }
             }
         }
-        public string Get()
+        public string GetIndent()
         {
             int indent_;
             lock(this)
@@ -80,12 +101,17 @@ namespace DbgViewTR
             }
             return "".PadRight(indent_);
         }
+
+        public int GetContextId()
+        {
+            return context_id;
+        }
     }
 
     class IndentKey
     {
-        private int thread_id;
-        private int? task_id;
+        private readonly int thread_id;
+        private readonly int? task_id;
         public IndentKey(int threadId, int? taskId)
         {
             thread_id = threadId;
@@ -93,10 +119,10 @@ namespace DbgViewTR
         }
         public string GetKey()
         {
-            if (task_id != null)
-            {
-                return "TASK_" + task_id;
-            }
+            //if (task_id != null)
+            //{
+            //    return "TASK_" + task_id;
+            //}
             return "Thread_" + thread_id;
         }
     }
@@ -104,8 +130,8 @@ namespace DbgViewTR
     class IndentManager
     {
         private static IndentManager instance = null;
-        private static object locker = new object();
-        public static IndentManager getInstance()
+        private static readonly object locker = new object();
+        public static IndentManager GetInstance()
         {
             if (instance == null)
             {
@@ -119,11 +145,19 @@ namespace DbgViewTR
             }
             return instance;
         }
-        private Dictionary<string, IndentUnit> indentDictionary = new Dictionary<string, IndentUnit>();
-        public IndentUnit Get(IndentKey key)
+        private Dictionary<string, IndentContext> indentDictionary = new Dictionary<string, IndentContext>();
+        private int ContextIdSeq = 1;
+        public int GetNextContextId()
+        {
+            lock(locker)
+            {
+                return ContextIdSeq++;
+            }
+        }
+        public IndentContext Get(IndentKey key)
         {
             string keyStr = key.GetKey();
-            lock(locker)
+            lock (locker)
             {
                 if (indentDictionary.ContainsKey(keyStr))
                 {
@@ -131,12 +165,23 @@ namespace DbgViewTR
                 }
                 else
                 {
-                    IndentUnit iu = new IndentUnit();
+                    IndentContext iu = new IndentContext();
                     indentDictionary.Add(keyStr, iu);
                     return iu;
                 }
             }
         }
+        public void Put(IndentKey key, IndentContext iu)
+        {
+            lock (locker)
+            {
+                indentDictionary[key.GetKey()] = iu;
+            }
+        }
+    }
+#else
+    public class IndentContext
+    {
     }
 #endif
 
@@ -146,8 +191,35 @@ namespace DbgViewTR
         //[DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         //public static extern void OutputDebugString(string message);
 
-        const string project_key = "NEO-DBG";
+        static readonly string project_key = "DBG-" + Assembly.GetExecutingAssembly().GetName().Name;
 #endif
+
+        public static IndentContext SaveContextAndShuffle()
+        {
+#if DEBUG
+            StackFrame sf = new StackFrame(1, true);
+            DbgData dd = new DbgData(sf);
+            Log(dd, "SaveContextAndShuffle()");
+            IndentKey ik = dd.GetIndentKey();
+            IndentContext iu = IndentManager.GetInstance().Get(ik);
+            IndentContext copy = new IndentContext(iu);
+            iu.ShuffleContext();
+            return copy;
+#else
+            return null;
+#endif
+        }
+
+        public static void RestoreContext(IndentContext iu)
+        {
+#if DEBUG
+            StackFrame sf = new StackFrame(1, true);
+            DbgData dd = new DbgData(sf);
+            IndentKey ik = dd.GetIndentKey();
+            IndentManager.GetInstance().Put(ik, iu);
+            Log(dd, "RestoreContext()");
+#endif
+        }
 
         public static void Enter()
         {
@@ -210,23 +282,23 @@ namespace DbgViewTR
         private static void Log(DbgData dd, string format, params object[] args)
         {
             IndentKey ik = dd.GetIndentKey();
-            IndentUnit iu = IndentManager.getInstance().Get(ik);
+            IndentContext iu = IndentManager.GetInstance().Get(ik);
             if (format == "<")
             {
                 if (!iu.Unindent())
                 {
-                    Debug.WriteLine(String.Format("[{0}]Warning : log indent error", project_key));
+                    Debug.WriteLine(String.Format("[{0}][{1}]<{2}>Warning : log indent error", project_key, dd.thread_id, iu.GetContextId()));
                 }
             }
-            string indentStr = iu.Get();
+            string indentStr = iu.GetIndent();
             string dbgStr;
             if (dd.file_name == null)
             {
-                dbgStr = String.Format("[{0}][{1}]<{2}>{3}{4}", project_key, dd.thread_id, (dd.task_id?.ToString()??"-"), indentStr, dd.method_full_name);
+                dbgStr = String.Format("[{0}][{1}]<{2}>{3}{4}[{5}]", project_key, dd.thread_id, iu.GetContextId(), indentStr, dd.method_full_name, dd.thread_name);
             }
             else
             {
-                dbgStr = String.Format("[{0}][{1}]<{2}>{3}{4}({5}){6}", project_key, dd.thread_id, (dd.task_id?.ToString() ?? "-"), indentStr, dd.file_name, dd.line_number, dd.method_name);
+                dbgStr = String.Format("[{0}][{1}]<{2}>{3}{4}({5}){6}[{7}]", project_key, dd.thread_id, iu.GetContextId(), indentStr, dd.file_name, dd.line_number, dd.method_name, dd.thread_name);
             }
             string logStr = String.Format(format, args);
             string finalStr = String.Format("{0} : {1}", dbgStr, logStr);

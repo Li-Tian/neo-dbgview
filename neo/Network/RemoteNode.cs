@@ -1,4 +1,5 @@
-﻿using Neo.Core;
+﻿using DbgViewTR;
+using Neo.Core;
 using Neo.Cryptography;
 using Neo.IO;
 using Neo.Network.Payloads;
@@ -394,13 +395,40 @@ namespace Neo.Network
             //There is a bug in .NET Core 2.0 that blocks async method which returns void.
             await Task.Yield();
 #endif
-            if (!await SendMessageAsync(Message.Create("version", VersionPayload.Create(localNode.Port, localNode.Nonce, localNode.UserAgent))))
+            TR.Enter();
+
+            bool messageSent = false;
+            IndentContext ic = TR.SaveContextAndShuffle();
+            try
+            {
+                messageSent = await SendMessageAsync(Message.Create("version", VersionPayload.Create(localNode.Port, localNode.Nonce, localNode.UserAgent)));
+            }
+            finally
+            {
+                TR.RestoreContext(ic);
+            }
+            if (!messageSent)
+            {
+                TR.Exit();
                 return;
-            Message message = await ReceiveMessageAsync(HalfMinute);
+            }
+            Message message = null;
+            ic = TR.SaveContextAndShuffle();
+            try
+            {
+                message = await ReceiveMessageAsync(HalfMinute);
+            }
+            finally
+            {
+                TR.RestoreContext(ic);
+            }
             if (message == null) return;
+            TR.Log("message : {0} from {1}", message.Command, RemoteEndpoint.Address);
             if (message.Command != "version")
             {
+                TR.Log();
                 Disconnect(true);
+                TR.Exit();
                 return;
             }
             try
@@ -409,17 +437,23 @@ namespace Neo.Network
             }
             catch (EndOfStreamException)
             {
+                TR.Log();
                 Disconnect(false);
+                TR.Exit();
                 return;
             }
             catch (FormatException)
             {
+                TR.Log();
                 Disconnect(true);
+                TR.Exit();
                 return;
             }
             if (Version.Nonce == localNode.Nonce)
             {
+                TR.Log();
                 Disconnect(true);
+                TR.Exit();
                 return;
             }
             bool isSelf;
@@ -429,23 +463,54 @@ namespace Neo.Network
             }
             if (isSelf)
             {
+                TR.Log();
                 Disconnect(false);
+                TR.Exit();
                 return;
             }
             if (ListenerEndpoint == null && Version.Port > 0)
             {
                 ListenerEndpoint = new IPEndPoint(RemoteEndpoint.Address, Version.Port);
             }
-            if (!await SendMessageAsync(Message.Create("verack"))) return;
-            message = await ReceiveMessageAsync(HalfMinute);
-            if (message == null) return;
+
+            try
+            {
+                messageSent = await SendMessageAsync(Message.Create("verack"));
+            }
+            finally
+            {
+                TR.RestoreContext(ic);
+            }
+            if (!messageSent)
+            {
+                TR.Exit();
+                return;
+            }
+            ic = TR.SaveContextAndShuffle();
+            try
+            {
+                message = await ReceiveMessageAsync(HalfMinute);
+            }
+            finally
+            {
+                TR.RestoreContext(ic);
+            }
+
+            if (message == null)
+            {
+                TR.Exit();
+                return;
+            }
             if (message.Command != "verack")
             {
+                TR.Log();
                 Disconnect(true);
+                TR.Exit();
                 return;
             }
             if (Blockchain.Default?.HeaderHeight < Version.StartHeight)
             {
+                TR.Log();
                 EnqueueMessage("getheaders", GetBlocksPayload.Create(Blockchain.Default.CurrentHeaderHash));
             }
             StartSendLoop();
@@ -459,11 +524,20 @@ namespace Neo.Network
                     }
                 }
                 TimeSpan timeout = missions.Count == 0 ? HalfHour : OneMinute;
-                message = await ReceiveMessageAsync(timeout);
+                ic = TR.SaveContextAndShuffle();
+                try
+                {
+                    message = await ReceiveMessageAsync(timeout);
+                }
+                finally
+                {
+                    TR.RestoreContext(ic);
+                }
                 if (message == null) break;
                 if (DateTime.Now - mission_start > OneMinute
                     && message.Command != "block" && message.Command != "consensus" && message.Command != "tx")
                 {
+                    TR.Log();
                     Disconnect(false);
                     break;
                 }
@@ -473,15 +547,18 @@ namespace Neo.Network
                 }
                 catch (EndOfStreamException)
                 {
+                    TR.Log();
                     Disconnect(false);
                     break;
                 }
                 catch (FormatException)
                 {
+                    TR.Log();
                     Disconnect(true);
                     break;
                 }
             }
+            TR.Exit();
         }
 
         private async void StartSendLoop()

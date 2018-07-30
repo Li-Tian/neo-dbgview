@@ -43,7 +43,9 @@ namespace Neo.Network
             try
             {
                 TR.Log(ListenerEndpoint.ToString());
+                IndentContext ic = TR.SaveContextAndShuffle();
                 await socket.ConnectAsync(address, ListenerEndpoint.Port);
+                TR.RestoreContext(ic);
                 TR.Log();
                 OnConnected();
                 TR.Log();
@@ -81,23 +83,30 @@ namespace Neo.Network
 
         protected override async Task<Message> ReceiveMessageAsync(TimeSpan timeout)
         {
+            await Task.Yield();
             TR.Enter();
             CancellationTokenSource source = new CancellationTokenSource(timeout);
             //Stream.ReadAsync doesn't support CancellationToken
             //see: https://stackoverflow.com/questions/20131434/cancel-networkstream-readasync-using-tcplistener
             source.Token.Register(() => Disconnect(false));
+            IndentContext ic = TR.SaveContextAndShuffle();
             try
             {
-                return TR.Exit(await Message.DeserializeFromAsync(stream, source.Token));
+                Message msg = await Message.DeserializeFromAsync(stream, source.Token);
+                TR.RestoreContext(ic);
+                return TR.Exit(msg);
             }
-            catch (ArgumentException) { }
-            catch (ObjectDisposedException) { }
+            catch (ArgumentException) { TR.Log(); }
+            catch (ObjectDisposedException) { TR.Log(); }
             catch (Exception ex) when (ex is FormatException || ex is IOException || ex is OperationCanceledException)
             {
+                TR.Log();
                 Disconnect(false);
             }
             finally
             {
+                TR.RestoreContext(ic);
+                TR.Log();
                 source.Dispose();
             }
             return TR.Exit((Message)null);
@@ -116,9 +125,13 @@ namespace Neo.Network
             try
             {
                 await stream.WriteAsync(buffer, 0, buffer.Length, source.Token);
+                TR.Log("message : {0} sent to {1}", message.Command, RemoteEndpoint.Address);
                 return TR.Exit(true);
             }
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException)
+            {
+                TR.Log();
+            }
             catch (Exception ex) when (ex is IOException || ex is OperationCanceledException)
             {
                 Disconnect(false);
