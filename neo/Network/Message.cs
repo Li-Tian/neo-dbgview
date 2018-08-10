@@ -1,4 +1,5 @@
-﻿using Neo.Cryptography;
+﻿using DbgViewTR;
+using Neo.Cryptography;
 using Neo.IO;
 using System;
 using System.IO;
@@ -22,35 +23,49 @@ namespace Neo.Network
 
         public static Message Create(string command, ISerializable payload = null)
         {
-            return Create(command, payload == null ? new byte[0] : payload.ToArray());
+            TR.Enter();
+            return TR.Exit(Create(command, payload == null ? new byte[0] : payload.ToArray()));
         }
 
         public static Message Create(string command, byte[] payload)
         {
-            return new Message
+            TR.Enter();
+            return TR.Exit(new Message
             {
                 Command = command,
                 Checksum = GetChecksum(payload),
                 Payload = payload
-            };
+            });
         }
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             if (reader.ReadUInt32() != Magic)
+            {
+                TR.Exit();
                 throw new FormatException();
+            }
             this.Command = reader.ReadFixedString(12);
             uint length = reader.ReadUInt32();
             if (length > PayloadMaxSize)
+            {
+                TR.Exit();
                 throw new FormatException();
+            }
             this.Checksum = reader.ReadUInt32();
             this.Payload = reader.ReadBytes((int)length);
             if (GetChecksum(Payload) != Checksum)
+            {
+                TR.Exit();
                 throw new FormatException();
+            }
+            TR.Exit();
         }
 
         public static async Task<Message> DeserializeFromAsync(Stream stream, CancellationToken cancellationToken)
         {
+            TR.Enter();
             uint payload_length;
             byte[] buffer = await FillBufferAsync(stream, 24, cancellationToken);
             Message message = new Message();
@@ -58,11 +73,17 @@ namespace Neo.Network
             using (BinaryReader reader = new BinaryReader(ms, Encoding.UTF8))
             {
                 if (reader.ReadUInt32() != Magic)
+                {
+                    TR.Exit();
                     throw new FormatException();
+                }
                 message.Command = reader.ReadFixedString(12);
                 payload_length = reader.ReadUInt32();
                 if (payload_length > PayloadMaxSize)
+                {
+                    TR.Exit();
                     throw new FormatException();
+                }
                 message.Checksum = reader.ReadUInt32();
             }
             if (payload_length > 0)
@@ -70,12 +91,16 @@ namespace Neo.Network
             else
                 message.Payload = new byte[0];
             if (GetChecksum(message.Payload) != message.Checksum)
+            {
+                TR.Exit();
                 throw new FormatException();
-            return message;
+            }
+            return TR.Exit(message);
         }
 
         public static async Task<Message> DeserializeFromAsync(WebSocket socket, CancellationToken cancellationToken)
         {
+            TR.Enter();
             uint payload_length;
             byte[] buffer = await FillBufferAsync(socket, 24, cancellationToken);
             Message message = new Message();
@@ -83,11 +108,17 @@ namespace Neo.Network
             using (BinaryReader reader = new BinaryReader(ms, Encoding.UTF8))
             {
                 if (reader.ReadUInt32() != Magic)
+                {
+                    TR.Exit();
                     throw new FormatException();
+                }
                 message.Command = reader.ReadFixedString(12);
                 payload_length = reader.ReadUInt32();
                 if (payload_length > PayloadMaxSize)
+                {
+                    TR.Exit();
                     throw new FormatException();
+                }
                 message.Checksum = reader.ReadUInt32();
             }
             if (payload_length > 0)
@@ -95,12 +126,16 @@ namespace Neo.Network
             else
                 message.Payload = new byte[0];
             if (GetChecksum(message.Payload) != message.Checksum)
+            {
+                TR.Exit();
                 throw new FormatException();
-            return message;
+            }
+            return TR.Exit(message);
         }
 
         private static async Task<byte[]> FillBufferAsync(Stream stream, int buffer_size, CancellationToken cancellationToken)
         {
+            TR.Enter();
             const int MAX_SIZE = 1024;
             byte[] buffer = new byte[buffer_size < MAX_SIZE ? buffer_size : MAX_SIZE];
             using (MemoryStream ms = new MemoryStream())
@@ -109,16 +144,21 @@ namespace Neo.Network
                 {
                     int count = buffer_size < MAX_SIZE ? buffer_size : MAX_SIZE;
                     count = await stream.ReadAsync(buffer, 0, count, cancellationToken);
-                    if (count <= 0) throw new IOException();
+                    if (count <= 0)
+                    {
+                        TR.Exit();
+                        throw new IOException();
+                    }
                     ms.Write(buffer, 0, count);
                     buffer_size -= count;
                 }
-                return ms.ToArray();
+                return TR.Exit(ms.ToArray());
             }
         }
 
         private static async Task<byte[]> FillBufferAsync(WebSocket socket, int buffer_size, CancellationToken cancellationToken)
         {
+            TR.Enter();
             const int MAX_SIZE = 1024;
             byte[] buffer = new byte[buffer_size < MAX_SIZE ? buffer_size : MAX_SIZE];
             using (MemoryStream ms = new MemoryStream())
@@ -129,26 +169,32 @@ namespace Neo.Network
                     ArraySegment<byte> segment = new ArraySegment<byte>(buffer, 0, count);
                     WebSocketReceiveResult result = await socket.ReceiveAsync(segment, cancellationToken);
                     if (result.Count <= 0 || result.MessageType != WebSocketMessageType.Binary)
+                    {
+                        TR.Exit();
                         throw new IOException();
+                    }
                     ms.Write(buffer, 0, result.Count);
                     buffer_size -= result.Count;
                 }
-                return ms.ToArray();
+                return TR.Exit(ms.ToArray());
             }
         }
 
         private static uint GetChecksum(byte[] value)
         {
-            return Crypto.Default.Hash256(value).ToUInt32(0);
+            TR.Enter();
+            return TR.Exit(Crypto.Default.Hash256(value).ToUInt32(0));
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(Magic);
             writer.WriteFixedString(Command, 12);
             writer.Write(Payload.Length);
             writer.Write(Checksum);
             writer.Write(Payload);
+            TR.Exit();
         }
     }
 }

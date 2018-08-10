@@ -41,11 +41,14 @@ namespace Neo.Network
 
         protected RemoteNode(LocalNode localNode)
         {
+            TR.Enter();
             this.localNode = localNode;
+            TR.Exit();
         }
 
         public virtual void Disconnect(bool error)
         {
+            TR.Enter();
             if (Interlocked.Exchange(ref disposed, 1) == 0)
             {
                 Disconnected?.Invoke(this, error);
@@ -61,15 +64,19 @@ namespace Neo.Network
                 if (needSync)
                     localNode.RequestGetBlocks();
             }
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             Disconnect(false);
+            TR.Exit();
         }
 
         public void EnqueueMessage(string command, ISerializable payload = null)
         {
+            TR.Enter();
             bool is_single = false;
             switch (command)
             {
@@ -104,32 +111,42 @@ namespace Neo.Network
                     message_queue.Enqueue(Message.Create(command, payload));
                 }
             }
+            TR.Exit();
         }
 
         private void OnAddrMessageReceived(AddrPayload payload)
         {
+            TR.Enter();
             IPEndPoint[] peers = payload.AddressList.Select(p => p.EndPoint).Where(p => p.Port != localNode.Port || !LocalNode.LocalAddresses.Contains(p.Address)).ToArray();
             if (peers.Length > 0) PeersReceived?.Invoke(this, peers);
+            TR.Exit();
         }
 
         private void OnFilterAddMessageReceived(FilterAddPayload payload)
         {
+            TR.Enter();
             if (bloom_filter != null)
                 bloom_filter.Add(payload.Data);
+            TR.Exit();
         }
 
         private void OnFilterClearMessageReceived()
         {
+            TR.Enter();
             bloom_filter = null;
+            TR.Exit();
         }
 
         private void OnFilterLoadMessageReceived(FilterLoadPayload payload)
         {
+            TR.Enter();
             bloom_filter = new BloomFilter(payload.Filter.Length * 8, payload.K, payload.Tweak, payload.Filter);
+            TR.Exit();
         }
 
         private void OnGetAddrMessageReceived()
         {
+            TR.Enter();
             if (!localNode.ServiceEnabled) return;
             AddrPayload payload;
             lock (localNode.connectedPeers)
@@ -145,10 +162,12 @@ namespace Neo.Network
                 payload = AddrPayload.Create(peers.Select(p => NetworkAddressWithTime.Create(p.ListenerEndpoint, p.Version.Services, p.Version.Timestamp)).ToArray());
             }
             EnqueueMessage("addr", payload);
+            TR.Exit();
         }
 
         private void OnGetBlocksMessageReceived(GetBlocksPayload payload)
         {
+            TR.Enter();
             if (!localNode.ServiceEnabled) return;
             if (Blockchain.Default == null) return;
             UInt256 hash = payload.HashStart.Select(p => Blockchain.Default.GetHeader(p)).Where(p => p != null).OrderBy(p => p.Index).Select(p => p.Hash).FirstOrDefault();
@@ -164,10 +183,12 @@ namespace Neo.Network
             {
                 EnqueueMessage("inv", InvPayload.Create(InventoryType.Block, hashes.ToArray()));
             }
+            TR.Exit();
         }
 
         private void OnGetDataMessageReceived(InvPayload payload)
         {
+            TR.Enter();
             foreach (UInt256 hash in payload.Hashes.Distinct())
             {
                 IInventory inventory;
@@ -207,14 +228,16 @@ namespace Neo.Network
                         break;
                 }
             }
+            TR.Exit();
         }
 
         private void OnGetHeadersMessageReceived(GetBlocksPayload payload)
         {
-            if (!localNode.ServiceEnabled) return;
-            if (Blockchain.Default == null) return;
+            TR.Enter();
+            if (!localNode.ServiceEnabled) { TR.Exit();  return; }
+            if (Blockchain.Default == null) { TR.Exit(); return; }
             UInt256 hash = payload.HashStart.Select(p => Blockchain.Default.GetHeader(p)).Where(p => p != null).OrderBy(p => p.Index).Select(p => p.Hash).FirstOrDefault();
-            if (hash == null || hash == payload.HashStop) return;
+            if (hash == null || hash == payload.HashStop) { TR.Exit(); return; }
             List<Header> headers = new List<Header>();
             do
             {
@@ -223,20 +246,24 @@ namespace Neo.Network
                 headers.Add(Blockchain.Default.GetHeader(hash));
             } while (hash != payload.HashStop && headers.Count < 2000);
             EnqueueMessage("headers", HeadersPayload.Create(headers));
+            TR.Exit();
         }
 
         private void OnHeadersMessageReceived(HeadersPayload payload)
         {
-            if (Blockchain.Default == null) return;
+            TR.Enter();
+            if (Blockchain.Default == null) { TR.Exit(); return; }
             Blockchain.Default.AddHeaders(payload.Headers);
             if (Blockchain.Default.HeaderHeight < Version.StartHeight)
             {
                 EnqueueMessage("getheaders", GetBlocksPayload.Create(Blockchain.Default.CurrentHeaderHash));
             }
+            TR.Exit();
         }
 
         private void OnInventoryReceived(IInventory inventory)
         {
+            TR.Enter();
             lock (missions_global)
             {
                 lock (missions)
@@ -249,20 +276,22 @@ namespace Neo.Network
                         mission_start = DateTime.Now;
                 }
             }
-            if (inventory is MinerTransaction) return;
+            if (inventory is MinerTransaction) { TR.Exit(); return; }
             InventoryReceived?.Invoke(this, inventory);
+            TR.Exit();
         }
 
         private void OnInvMessageReceived(InvPayload payload)
         {
+            TR.Exit();
             if (payload.Type != InventoryType.TX && payload.Type != InventoryType.Block && payload.Type != InventoryType.Consensus)
-                return;
+                { TR.Exit(); return; }
             HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
             lock (LocalNode.KnownHashes)
             {
                 hashes.RemoveWhere(p => LocalNode.KnownHashes.TryGetValue(p, out DateTime time) && time + LocalNode.HashesExpiration >= DateTime.UtcNow);
             }
-            if (hashes.Count == 0) return;
+            if (hashes.Count == 0) { TR.Exit(); return; }
             lock (missions_global)
             {
                 lock (missions)
@@ -279,17 +308,22 @@ namespace Neo.Network
                     }
                 }
             }
-            if (hashes.Count == 0) return;
+            if (hashes.Count == 0) { TR.Exit(); return; }
             EnqueueMessage("getdata", InvPayload.Create(payload.Type, hashes.ToArray()));
+            TR.Exit();
         }
 
         private void OnMemPoolMessageReceived()
         {
+            TR.Enter();
             EnqueueMessage("inv", InvPayload.Create(InventoryType.TX, LocalNode.GetMemoryPool().Select(p => p.Hash).ToArray()));
+            TR.Exit();
         }
 
         private void OnMessageReceived(Message message)
         {
+            TR.Enter();
+            TR.Log("OnMessageReceived : {0}", message);
             switch (message.Command)
             {
                 case "addr":
@@ -349,42 +383,50 @@ namespace Neo.Network
                     //暂时忽略
                     break;
             }
+            TR.Exit();
         }
 
         protected abstract Task<Message> ReceiveMessageAsync(TimeSpan timeout);
 
         internal bool Relay(IInventory data)
         {
-            if (Version?.Relay != true) return false;
+            TR.Enter();
+            if (Version?.Relay != true) return TR.Exit(false);
             if (data.InventoryType == InventoryType.TX)
             {
                 BloomFilter filter = bloom_filter;
                 if (filter != null && !TestFilter(filter, (Transaction)data))
-                    return false;
+                    return TR.Exit(false);
             }
             EnqueueMessage("inv", InvPayload.Create(data.InventoryType, data.Hash));
-            return true;
+            return TR.Exit(true);
         }
 
         internal void Relay(IEnumerable<Transaction> transactions)
         {
-            if (Version?.Relay != true) return;
+            TR.Enter();
+            if (Version?.Relay != true) { TR.Exit(); return; }
             BloomFilter filter = bloom_filter;
             if (filter != null)
                 transactions = transactions.Where(p => TestFilter(filter, p));
             UInt256[] hashes = transactions.Select(p => p.Hash).ToArray();
-            if (hashes.Length == 0) return;
+            if (hashes.Length == 0) { TR.Exit(); return; }
             EnqueueMessage("inv", InvPayload.Create(InventoryType.TX, hashes));
+            TR.Exit();
         }
 
         internal void RequestMemoryPool()
         {
+            TR.Enter();
             EnqueueMessage("mempool", null);
+            TR.Exit();
         }
 
         internal void RequestPeers()
         {
+            TR.Enter();
             EnqueueMessage("getaddr", null);
+            TR.Exit();
         }
 
         protected abstract Task<bool> SendMessageAsync(Message message);
@@ -567,6 +609,7 @@ namespace Neo.Network
             //There is a bug in .NET Core 2.0 that blocks async method which returns void.
             await Task.Yield();
 #endif
+            TR.Enter();
             while (disposed == 0)
             {
                 Message message = null;
@@ -596,26 +639,30 @@ namespace Neo.Network
                 }
                 else
                 {
+                    IndentContext ic = TR.SaveContextAndShuffle();
                     await SendMessageAsync(message);
+                    TR.RestoreContext(ic);
                 }
             }
+            TR.Exit();
         }
 
         private bool TestFilter(BloomFilter filter, Transaction tx)
         {
-            if (filter.Check(tx.Hash.ToArray())) return true;
-            if (tx.Outputs.Any(p => filter.Check(p.ScriptHash.ToArray()))) return true;
-            if (tx.Inputs.Any(p => filter.Check(p.ToArray()))) return true;
+            TR.Enter();
+            if (filter.Check(tx.Hash.ToArray())) return TR.Exit(true);
+            if (tx.Outputs.Any(p => filter.Check(p.ScriptHash.ToArray()))) return TR.Exit(true);
+            if (tx.Inputs.Any(p => filter.Check(p.ToArray()))) return TR.Exit(true);
             if (tx.Scripts.Any(p => filter.Check(p.ScriptHash.ToArray())))
-                return true;
+                return TR.Exit(true);
             if (tx.Type == TransactionType.RegisterTransaction)
             {
 #pragma warning disable CS0612
                 RegisterTransaction asset = (RegisterTransaction)tx;
-                if (filter.Check(asset.Admin.ToArray())) return true;
+                if (filter.Check(asset.Admin.ToArray())) return TR.Exit(true);
 #pragma warning restore CS0612
             }
-            return false;
+            return TR.Exit(false);
         }
     }
 }

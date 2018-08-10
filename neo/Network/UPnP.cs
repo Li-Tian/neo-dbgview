@@ -1,3 +1,4 @@
+using DbgViewTR;
 using System;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace Neo.Network
 
         public static async Task<bool> DiscoverAsync()
         {
+            TR.Enter();
             Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             s.ReceiveTimeout = (int)TimeOut.TotalMilliseconds;
             s.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);
@@ -53,15 +55,16 @@ namespace Neo.Network
                     resp = resp.Substring(0, resp.IndexOf("\r")).Trim();
                     if (!string.IsNullOrEmpty(_serviceUrl = await GetServiceUrlAsync(resp)))
                     {
-                        return true;
+                        return TR.Exit(true);
                     }
                 }
             } while (DateTime.Now - start < TimeOut);
-            return false;
+            return TR.Exit(false);
         }
 
         private static async Task<string> GetServiceUrlAsync(string resp)
         {
+            TR.Enter();
             try
             {
                 XmlDocument desc = new XmlDocument();
@@ -72,38 +75,48 @@ namespace Neo.Network
                 nsMgr.AddNamespace("tns", "urn:schemas-upnp-org:device-1-0");
                 XmlNode typen = desc.SelectSingleNode("//tns:device/tns:deviceType/text()", nsMgr);
                 if (!typen.Value.Contains("InternetGatewayDevice"))
-                    return null;
+                    return TR.Exit((string)null);
                 XmlNode node = desc.SelectSingleNode("//tns:service[contains(tns:serviceType,\"WANIPConnection\")]/tns:controlURL/text()", nsMgr);
                 if (node == null)
-                    return null;
+                    return TR.Exit((string)null);
                 XmlNode eventnode = desc.SelectSingleNode("//tns:service[contains(tns:serviceType,\"WANIPConnection\")]/tns:eventSubURL/text()", nsMgr);
                 return CombineUrls(resp, node.Value);
             }
-            catch { return null; }
+            catch { return TR.Exit((string) null); }
         }
 
         private static string CombineUrls(string resp, string p)
         {
+            TR.Enter();
             int n = resp.IndexOf("://");
             n = resp.IndexOf('/', n + 3);
-            return resp.Substring(0, n) + p;
+            return TR.Exit(resp.Substring(0, n) + p);
         }
 
         public static async Task ForwardPortAsync(int port, ProtocolType protocol, string description)
         {
+            TR.Enter();
             if (string.IsNullOrEmpty(_serviceUrl))
+            {
+                TR.Exit();
                 throw new Exception("No UPnP service available or Discover() has not been called");
+            }
             XmlDocument xdoc = await SOAPRequestAsync(_serviceUrl, "<u:AddPortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">" +
                 "<NewRemoteHost></NewRemoteHost><NewExternalPort>" + port.ToString() + "</NewExternalPort><NewProtocol>" + protocol.ToString().ToUpper() + "</NewProtocol>" +
                 "<NewInternalPort>" + port.ToString() + "</NewInternalPort><NewInternalClient>" + (await Dns.GetHostAddressesAsync(Dns.GetHostName())).First(p => p.AddressFamily == AddressFamily.InterNetwork).ToString() +
                 "</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>" + description +
             "</NewPortMappingDescription><NewLeaseDuration>0</NewLeaseDuration></u:AddPortMapping>", "AddPortMapping");
+            TR.Exit();
         }
 
         public static async Task DeleteForwardingRuleAsync(int port, ProtocolType protocol)
         {
+            TR.Enter();
             if (string.IsNullOrEmpty(_serviceUrl))
+            {
+                TR.Exit();
                 throw new Exception("No UPnP service available or Discover() has not been called");
+            }
             XmlDocument xdoc = await SOAPRequestAsync(_serviceUrl,
             "<u:DeletePortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">" +
             "<NewRemoteHost>" +
@@ -111,22 +124,28 @@ namespace Neo.Network
             "<NewExternalPort>" + port + "</NewExternalPort>" +
             "<NewProtocol>" + protocol.ToString().ToUpper() + "</NewProtocol>" +
             "</u:DeletePortMapping>", "DeletePortMapping");
+            TR.Exit();
         }
 
         public static async Task<IPAddress> GetExternalIPAsync()
         {
+            TR.Enter();
             if (string.IsNullOrEmpty(_serviceUrl))
+            {
+                TR.Exit();
                 throw new Exception("No UPnP service available or Discover() has not been called");
+            }
             XmlDocument xdoc = await SOAPRequestAsync(_serviceUrl, "<u:GetExternalIPAddress xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">" +
             "</u:GetExternalIPAddress>", "GetExternalIPAddress");
             XmlNamespaceManager nsMgr = new XmlNamespaceManager(xdoc.NameTable);
             nsMgr.AddNamespace("tns", "urn:schemas-upnp-org:device-1-0");
             string IP = xdoc.SelectSingleNode("//NewExternalIPAddress/text()", nsMgr).Value;
-            return IPAddress.Parse(IP);
+            return TR.Exit(IPAddress.Parse(IP));
         }
 
         private static async Task<XmlDocument> SOAPRequestAsync(string url, string soap, string function)
         {
+            TR.Enter();
             string req = "<?xml version=\"1.0\"?>" +
             "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
             "<s:Body>" +
@@ -144,7 +163,7 @@ namespace Neo.Network
             WebResponse wres = await r.GetResponseAsync();
             Stream ress = wres.GetResponseStream();
             resp.Load(ress);
-            return resp;
+            return TR.Exit(resp);
         }
     }
 }
