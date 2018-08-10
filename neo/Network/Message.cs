@@ -67,7 +67,9 @@ namespace Neo.Network
         {
             TR.Enter();
             uint payload_length;
+            IndentContext ic = TR.SaveContextAndShuffle();
             byte[] buffer = await FillBufferAsync(stream, 24, cancellationToken);
+            TR.RestoreContext(ic);
             Message message = new Message();
             using (MemoryStream ms = new MemoryStream(buffer, false))
             using (BinaryReader reader = new BinaryReader(ms, Encoding.UTF8))
@@ -87,7 +89,11 @@ namespace Neo.Network
                 message.Checksum = reader.ReadUInt32();
             }
             if (payload_length > 0)
+            {
+                ic = TR.SaveContextAndShuffle();
                 message.Payload = await FillBufferAsync(stream, (int)payload_length, cancellationToken);
+                TR.RestoreContext(ic);
+            }
             else
                 message.Payload = new byte[0];
             if (GetChecksum(message.Payload) != message.Checksum)
@@ -143,7 +149,9 @@ namespace Neo.Network
                 while (buffer_size > 0)
                 {
                     int count = buffer_size < MAX_SIZE ? buffer_size : MAX_SIZE;
+                    IndentContext ic = TR.SaveContextAndShuffle();
                     count = await stream.ReadAsync(buffer, 0, count, cancellationToken);
+                    TR.RestoreContext(ic);
                     if (count <= 0)
                     {
                         TR.Exit();

@@ -283,7 +283,7 @@ namespace Neo.Network
 
         private void OnInvMessageReceived(InvPayload payload)
         {
-            TR.Exit();
+            TR.Enter();
             if (payload.Type != InventoryType.TX && payload.Type != InventoryType.Block && payload.Type != InventoryType.Consensus)
                 { TR.Exit(); return; }
             HashSet<UInt256> hashes = new HashSet<UInt256>(payload.Hashes);
@@ -515,6 +515,7 @@ namespace Neo.Network
                 ListenerEndpoint = new IPEndPoint(RemoteEndpoint.Address, Version.Port);
             }
 
+            ic = TR.SaveContextAndShuffle();
             try
             {
                 messageSent = await SendMessageAsync(Message.Create("verack"));
