@@ -6,7 +6,6 @@ using Neo.Network.Payloads;
 using Neo.Wallets;
 using System.Collections.Generic;
 using System.Linq;
-using DbgViewTR;
 
 namespace Neo.Consensus
 {
@@ -33,7 +32,6 @@ namespace Neo.Consensus
 
         public void ChangeView(byte view_number)
         {
-            TR.Enter();
             int p = ((int)BlockIndex - view_number) % Validators.Length;
             State &= ConsensusState.SignatureSent;
             ViewNumber = view_number;
@@ -46,22 +44,19 @@ namespace Neo.Consensus
             if (MyIndex >= 0)
                 ExpectedView[MyIndex] = view_number;
             _header = null;
-            TR.Exit();
         }
 
         public ConsensusPayload MakeChangeView()
         {
-            TR.Enter();
-            return TR.Exit(MakePayload(new ChangeView
+            return MakePayload(new ChangeView
             {
                 NewViewNumber = ExpectedView[MyIndex]
-            }));
+            });
         }
 
         private Block _header = null;
         public Block MakeHeader()
         {
-            TR.Enter();
             if (TransactionHashes == null) return null;
             if (_header == null)
             {
@@ -77,14 +72,13 @@ namespace Neo.Consensus
                     Transactions = new Transaction[0]
                 };
             }
-            return TR.Exit(_header);
+            return _header;
         }
 
         private ConsensusPayload MakePayload(ConsensusMessage message)
         {
-            TR.Enter();
             message.ViewNumber = ViewNumber;
-            return TR.Exit(new ConsensusPayload
+            return new ConsensusPayload
             {
                 Version = Version,
                 PrevHash = PrevHash,
@@ -92,34 +86,31 @@ namespace Neo.Consensus
                 ValidatorIndex = (ushort)MyIndex,
                 Timestamp = Timestamp,
                 Data = message.ToArray()
-            });
+            };
         }
 
         public ConsensusPayload MakePrepareRequest()
         {
-            TR.Enter();
-            return TR.Exit(MakePayload(new PrepareRequest
+            return MakePayload(new PrepareRequest
             {
                 Nonce = Nonce,
                 NextConsensus = NextConsensus,
                 TransactionHashes = TransactionHashes,
                 MinerTransaction = (MinerTransaction)Transactions[TransactionHashes[0]],
                 Signature = Signatures[MyIndex]
-            }));
+            });
         }
 
         public ConsensusPayload MakePrepareResponse(byte[] signature)
         {
-            TR.Enter();
-            return TR.Exit(MakePayload(new PrepareResponse
+            return MakePayload(new PrepareResponse
             {
                 Signature = signature
-            }));
+            });
         }
 
         public void Reset(Wallet wallet)
         {
-            TR.Enter();
             State = ConsensusState.Initial;
             PrevHash = Blockchain.Default.CurrentBlockHash;
             BlockIndex = Blockchain.Default.Height + 1;
@@ -142,7 +133,6 @@ namespace Neo.Consensus
                 }
             }
             _header = null;
-            TR.Exit();
         }
     }
 }
