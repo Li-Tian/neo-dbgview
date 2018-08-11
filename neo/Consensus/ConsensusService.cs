@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using DbgViewTR;
 
 namespace Neo.Consensus
 {
@@ -27,16 +26,13 @@ namespace Neo.Consensus
 
         public ConsensusService(LocalNode localNode, Wallet wallet)
         {
-            TR.Enter();
             this.localNode = localNode;
             this.wallet = wallet;
             this.timer = new Timer(OnTimeout, null, Timeout.Infinite, Timeout.Infinite);
-            TR.Exit();
         }
 
         private bool AddTransaction(Transaction tx, bool verify)
         {
-            TR.Enter();
             if (Blockchain.Default.ContainsTransaction(tx.Hash) ||
                 (verify && !tx.Verify(context.Transactions.Values)) ||
                 !CheckPolicy(tx))
@@ -62,41 +58,35 @@ namespace Neo.Consensus
                     return false;
                 }
             }
-            return TR.Exit(true);
+            return true;
         }
 
         private void Blockchain_PersistUnlocked(object sender, Block block)
         {
-            TR.Enter();
             Log($"persist block: {block.Hash}");
             block_received_time = DateTime.Now;
             InitializeConsensus(0);
-            TR.Exit();
         }
 
         private void CheckExpectedView(byte view_number)
         {
-            TR.Enter();
             if (context.ViewNumber == view_number) return;
             if (context.ExpectedView.Count(p => p == view_number) >= context.M)
             {
                 InitializeConsensus(view_number);
             }
-            TR.Exit();
         }
 
         private bool CheckPolicy(Transaction tx)
         {
-            TR.Enter();
             foreach (PolicyPlugin plugin in PolicyPlugin.Instances)
                 if (!plugin.CheckPolicy(tx))
                     return false;
-            return TR.Exit(true); 
+            return true;
         }
 
         private void CheckSignatures()
         {
-            TR.Enter();
             if (context.Signatures.Count(p => p != null) >= context.M && context.TransactionHashes.All(p => context.Transactions.ContainsKey(p)))
             {
                 Contract contract = Contract.CreateMultiSigContract(context.M, context.Validators);
@@ -115,12 +105,10 @@ namespace Neo.Consensus
                     Log($"reject block: {block.Hash}");
                 context.State |= ConsensusState.BlockSent;
             }
-            TR.Exit();
         }
 
         public void Dispose()
         {
-            TR.Enter();
             Log("OnStop");
             if (timer != null) timer.Dispose();
             if (started)
@@ -129,12 +117,10 @@ namespace Neo.Consensus
                 LocalNode.InventoryReceiving -= LocalNode_InventoryReceiving;
                 LocalNode.InventoryReceived -= LocalNode_InventoryReceived;
             }
-            TR.Exit();
         }
 
         private void FillContext()
         {
-            TR.Enter();
             IEnumerable<Transaction> mem_pool = LocalNode.GetMemoryPool().Where(p => CheckPolicy(p));
             foreach (PolicyPlugin plugin in PolicyPlugin.Instances)
                 mem_pool = plugin.Filter(mem_pool);
@@ -167,23 +153,18 @@ namespace Neo.Consensus
             context.TransactionHashes = transactions.Select(p => p.Hash).ToArray();
             context.Transactions = transactions.ToDictionary(p => p.Hash);
             context.NextConsensus = Blockchain.GetConsensusAddress(Blockchain.Default.GetValidators(transactions).ToArray());
-
-            TR.Exit();
         }
 
         private static ulong GetNonce()
         {
-            TR.Enter();
             byte[] nonce = new byte[sizeof(ulong)];
             Random rand = new Random();
             rand.NextBytes(nonce);
             return nonce.ToUInt64(0);
-            TR.Exit();
         }
 
         private void InitializeConsensus(byte view_number)
         {
-            TR.Enter();
             lock (context)
             {
                 if (view_number == 0)
@@ -221,12 +202,10 @@ namespace Neo.Consensus
                     timer.Change(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (view_number + 1)), Timeout.InfiniteTimeSpan);
                 }
             }
-            TR.Exit();
         }
 
         private void LocalNode_InventoryReceived(object sender, IInventory inventory)
         {
-            TR.Enter();
             ConsensusPayload payload = inventory as ConsensusPayload;
             if (payload != null)
             {
@@ -276,12 +255,10 @@ namespace Neo.Consensus
                     }
                 }
             }
-            TR.Exit();
         }
 
         private void LocalNode_InventoryReceiving(object sender, InventoryReceivingEventArgs e)
         {
-            TR.Enter();
             Transaction tx = e.Inventory as Transaction;
             if (tx != null)
             {
@@ -295,29 +272,23 @@ namespace Neo.Consensus
                     e.Cancel = true;
                 }
             }
-            TR.Exit();
         }
 
         protected virtual void Log(string message)
         {
-            TR.Enter();
-            TR.Exit();
         }
 
         private void OnChangeViewReceived(ConsensusPayload payload, ChangeView message)
         {
-            TR.Enter();
             Log($"{nameof(OnChangeViewReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} nv={message.NewViewNumber}");
             if (message.NewViewNumber <= context.ExpectedView[payload.ValidatorIndex])
                 return;
             context.ExpectedView[payload.ValidatorIndex] = message.NewViewNumber;
             CheckExpectedView(message.NewViewNumber);
-            TR.Exit();
         }
 
         private void OnPrepareRequestReceived(ConsensusPayload payload, PrepareRequest message)
         {
-            TR.Enter();
             Log($"{nameof(OnPrepareRequestReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} tx={message.TransactionHashes.Length}");
             if (!context.State.HasFlag(ConsensusState.Backup) || context.State.HasFlag(ConsensusState.RequestReceived))
                 return;
@@ -352,12 +323,10 @@ namespace Neo.Consensus
                 foreach (RemoteNode node in localNode.GetRemoteNodes())
                     node.EnqueueMessage("getdata", msg);
             }
-            TR.Exit();
         }
 
         private void OnPrepareResponseReceived(ConsensusPayload payload, PrepareResponse message)
         {
-            TR.Enter();
             Log($"{nameof(OnPrepareResponseReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex}");
             if (context.State.HasFlag(ConsensusState.BlockSent)) return;
             if (context.Signatures[payload.ValidatorIndex] != null) return;
@@ -365,12 +334,10 @@ namespace Neo.Consensus
             if (header == null || !Crypto.Default.VerifySignature(header.GetHashData(), message.Signature, context.Validators[payload.ValidatorIndex].EncodePoint(false))) return;
             context.Signatures[payload.ValidatorIndex] = message.Signature;
             CheckSignatures();
-            TR.Exit();
         }
 
         private void OnTimeout(object state)
         {
-            TR.Enter();
             lock (context)
             {
                 if (timer_height != context.BlockIndex || timer_view != context.ViewNumber) return;
@@ -392,24 +359,20 @@ namespace Neo.Consensus
                     RequestChangeView();
                 }
             }
-            TR.Exit();
         }
 
         private void RequestChangeView()
         {
-            TR.Enter();
             context.State |= ConsensusState.ViewChanging;
             context.ExpectedView[context.MyIndex]++;
             Log($"request change view: height={context.BlockIndex} view={context.ViewNumber} nv={context.ExpectedView[context.MyIndex]} state={context.State}");
             timer.Change(TimeSpan.FromSeconds(Blockchain.SecondsPerBlock << (context.ExpectedView[context.MyIndex] + 1)), Timeout.InfiniteTimeSpan);
             SignAndRelay(context.MakeChangeView());
             CheckExpectedView(context.ExpectedView[context.MyIndex]);
-            TR.Exit();
         }
 
         private void SignAndRelay(ConsensusPayload payload)
         {
-            TR.Enter();
             ContractParametersContext sc;
             try
             {
@@ -422,19 +385,16 @@ namespace Neo.Consensus
             }
             sc.Verifiable.Scripts = sc.GetScripts();
             localNode.RelayDirectly(payload);
-            TR.Exit();
         }
 
         public void Start()
         {
-            TR.Enter();
             Log("OnStart");
             started = true;
             Blockchain.PersistUnlocked += Blockchain_PersistUnlocked;
             LocalNode.InventoryReceiving += LocalNode_InventoryReceiving;
             LocalNode.InventoryReceived += LocalNode_InventoryReceived;
             InitializeConsensus(0);
-            TR.Exit();
         }
     }
 }

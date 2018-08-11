@@ -3,7 +3,6 @@ using Neo.IO;
 using System;
 using System.IO;
 using System.Linq;
-using DbgViewTR;
 
 namespace Neo.Consensus
 {
@@ -18,13 +17,10 @@ namespace Neo.Consensus
         public PrepareRequest()
             : base(ConsensusMessageType.PrepareRequest)
         {
-            TR.Enter();
-            TR.Exit();
         }
 
         public override void Deserialize(BinaryReader reader)
         {
-            TR.Enter();
             base.Deserialize(reader);
             Nonce = reader.ReadUInt64();
             NextConsensus = reader.ReadSerializable<UInt160>();
@@ -35,19 +31,16 @@ namespace Neo.Consensus
             if (MinerTransaction.Hash != TransactionHashes[0])
                 throw new FormatException();
             Signature = reader.ReadBytes(64);
-            TR.Exit();
         }
 
         public override void Serialize(BinaryWriter writer)
         {
-            TR.Enter();
             base.Serialize(writer);
             writer.Write(Nonce);
             writer.Write(NextConsensus);
             writer.Write(TransactionHashes);
             writer.Write(MinerTransaction);
             writer.Write(Signature);
-            TR.Exit();
         }
     }
 }
