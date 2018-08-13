@@ -2,6 +2,7 @@
 using Neo.IO.Caching;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Consensus
 {
@@ -19,18 +20,23 @@ namespace Neo.Consensus
 
         protected ConsensusMessage(ConsensusMessageType type)
         {
+            TR.Enter();
             this.Type = type;
+            TR.Exit();
         }
 
         public virtual void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             if (Type != (ConsensusMessageType)reader.ReadByte())
                 throw new FormatException();
             ViewNumber = reader.ReadByte();
+            TR.Exit();
         }
 
         public static ConsensusMessage DeserializeFrom(byte[] data)
         {
+            TR.Enter();
             ConsensusMessage message = ReflectionCache.CreateInstance<ConsensusMessage>(data[0]);
             if (message == null) throw new FormatException();
 
@@ -39,13 +45,15 @@ namespace Neo.Consensus
             {
                 message.Deserialize(r);
             }
-            return message;
+            return TR.Exit(message);
         }
 
         public virtual void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write((byte)Type);
             writer.Write(ViewNumber);
+            TR.Exit();
         }
     }
 }
