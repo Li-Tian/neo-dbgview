@@ -17,8 +17,8 @@ namespace Neo.Consensus
     public class ConsensusService : IDisposable
     {
         private ConsensusContext context = new ConsensusContext();
-        private LocalNode localNode;
-        private Wallet wallet;
+        private LocalNode localNode; //network.LocalNode.cs
+        private Wallet wallet; //Neo.Wallets.Wallet.cs
         private Timer timer;
         private uint timer_height;
         private byte timer_view;
@@ -298,6 +298,7 @@ namespace Neo.Consensus
 
         protected virtual void Log(string message)
         {
+            // something should be here. 
             TR.Enter();
             TR.Exit();
         }
