@@ -30,10 +30,16 @@ namespace Neo.Consensus
             NextConsensus = reader.ReadSerializable<UInt160>();
             TransactionHashes = reader.ReadSerializableArray<UInt256>();
             if (TransactionHashes.Distinct().Count() != TransactionHashes.Length)
+            {
+                TR.Exit();
                 throw new FormatException();
+            }
             MinerTransaction = reader.ReadSerializable<MinerTransaction>();
             if (MinerTransaction.Hash != TransactionHashes[0])
+            {
+                TR.Exit();
                 throw new FormatException();
+            }
             Signature = reader.ReadBytes(64);
             TR.Exit();
         }
