@@ -230,10 +230,13 @@ namespace Neo.Consensus
             {
                 lock (context)
                 {
-                    if (payload.ValidatorIndex == context.MyIndex) return;
+                    if (payload.ValidatorIndex == context.MyIndex) { TR.Exit(); return; }
 
                     if (payload.Version != ConsensusContext.Version)
+                    {
+                        TR.Exit();
                         return;
+                    }
                     if (payload.PrevHash != context.PrevHash || payload.BlockIndex != context.BlockIndex)
                     {
                         // Request blocks
@@ -244,11 +247,11 @@ namespace Neo.Consensus
 
                             localNode.RequestGetBlocks();
                         }
-
+                        TR.Exit();
                         return;
                     }
 
-                    if (payload.ValidatorIndex >= context.Validators.Length) return;
+                    if (payload.ValidatorIndex >= context.Validators.Length) { TR.Exit(); return; }
                     ConsensusMessage message;
                     try
                     {
@@ -256,10 +259,14 @@ namespace Neo.Consensus
                     }
                     catch
                     {
+                        TR.Exit();
                         return;
                     }
                     if (message.ViewNumber != context.ViewNumber && message.Type != ConsensusMessageType.ChangeView)
+                    {
+                        TR.Exit();
                         return;
+                    }
                     switch (message.Type)
                     {
                         case ConsensusMessageType.ChangeView:
@@ -308,7 +315,10 @@ namespace Neo.Consensus
             TR.Enter();
             Log($"{nameof(OnChangeViewReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} nv={message.NewViewNumber}");
             if (message.NewViewNumber <= context.ExpectedView[payload.ValidatorIndex])
+            {
+                TR.Exit();
                 return;
+            }
             context.ExpectedView[payload.ValidatorIndex] = message.NewViewNumber;
             CheckExpectedView(message.NewViewNumber);
             TR.Exit();
@@ -319,11 +329,15 @@ namespace Neo.Consensus
             TR.Enter();
             Log($"{nameof(OnPrepareRequestReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex} tx={message.TransactionHashes.Length}");
             if (!context.State.HasFlag(ConsensusState.Backup) || context.State.HasFlag(ConsensusState.RequestReceived))
+            {
+                TR.Exit();
                 return;
+            }
             if (payload.ValidatorIndex != context.PrimaryIndex) return;
             if (payload.Timestamp <= Blockchain.Default.GetHeader(context.PrevHash).Timestamp || payload.Timestamp > DateTime.Now.AddMinutes(10).ToTimestamp())
             {
                 Log($"Timestamp incorrect: {payload.Timestamp}");
+                TR.Exit();
                 return;
             }
             context.State |= ConsensusState.RequestReceived;
@@ -332,7 +346,7 @@ namespace Neo.Consensus
             context.NextConsensus = message.NextConsensus;
             context.TransactionHashes = message.TransactionHashes;
             context.Transactions = new Dictionary<UInt256, Transaction>();
-            if (!Crypto.Default.VerifySignature(context.MakeHeader().GetHashData(), message.Signature, context.Validators[payload.ValidatorIndex].EncodePoint(false))) return;
+            if (!Crypto.Default.VerifySignature(context.MakeHeader().GetHashData(), message.Signature, context.Validators[payload.ValidatorIndex].EncodePoint(false))) { TR.Exit(); return; }
             context.Signatures = new byte[context.Validators.Length][];
             context.Signatures[payload.ValidatorIndex] = message.Signature;
             Dictionary<UInt256, Transaction> mempool = LocalNode.GetMemoryPool().ToDictionary(p => p.Hash);
@@ -340,9 +354,12 @@ namespace Neo.Consensus
             {
                 if (mempool.TryGetValue(hash, out Transaction tx))
                     if (!AddTransaction(tx, false))
+                    {
+                        TR.Exit();
                         return;
+                    }
             }
-            if (!AddTransaction(message.MinerTransaction, true)) return;
+            if (!AddTransaction(message.MinerTransaction, true)) { TR.Exit(); return; }
             if (context.Transactions.Count < context.TransactionHashes.Length)
             {
                 UInt256[] hashes = context.TransactionHashes.Where(i => !context.Transactions.ContainsKey(i)).ToArray();
@@ -358,10 +375,10 @@ namespace Neo.Consensus
         {
             TR.Enter();
             Log($"{nameof(OnPrepareResponseReceived)}: height={payload.BlockIndex} view={message.ViewNumber} index={payload.ValidatorIndex}");
-            if (context.State.HasFlag(ConsensusState.BlockSent)) return;
-            if (context.Signatures[payload.ValidatorIndex] != null) return;
+            if (context.State.HasFlag(ConsensusState.BlockSent)) { TR.Exit(); return; }
+            if (context.Signatures[payload.ValidatorIndex] != null) { TR.Exit(); return; }
             Block header = context.MakeHeader();
-            if (header == null || !Crypto.Default.VerifySignature(header.GetHashData(), message.Signature, context.Validators[payload.ValidatorIndex].EncodePoint(false))) return;
+            if (header == null || !Crypto.Default.VerifySignature(header.GetHashData(), message.Signature, context.Validators[payload.ValidatorIndex].EncodePoint(false))) { TR.Exit(); return; }
             context.Signatures[payload.ValidatorIndex] = message.Signature;
             CheckSignatures();
             TR.Exit();
@@ -372,7 +389,7 @@ namespace Neo.Consensus
             TR.Enter();
             lock (context)
             {
-                if (timer_height != context.BlockIndex || timer_view != context.ViewNumber) return;
+                if (timer_height != context.BlockIndex || timer_view != context.ViewNumber) { TR.Exit(); return; }
                 Log($"timeout: height={timer_height} view={timer_view} state={context.State}");
                 if (context.State.HasFlag(ConsensusState.Primary) && !context.State.HasFlag(ConsensusState.RequestSent))
                 {
@@ -417,6 +434,7 @@ namespace Neo.Consensus
             }
             catch (InvalidOperationException)
             {
+                TR.Exit();
                 return;
             }
             sc.Verifiable.Scripts = sc.GetScripts();

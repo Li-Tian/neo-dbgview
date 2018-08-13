@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+using DbgViewTR;
 
 namespace Neo
 {
@@ -14,13 +15,16 @@ namespace Neo
 
         public BigDecimal(BigInteger value, byte decimals)
         {
+            TR.Enter();
             this.value = value;
             this.decimals = decimals;
+            TR.Exit();
         }
 
         public BigDecimal ChangeDecimals(byte decimals)
         {
-            if (this.decimals == decimals) return this;
+            TR.Enter();
+            if (this.decimals == decimals) return TR.Exit(this);
             BigInteger value;
             if (this.decimals < decimals)
             {
@@ -33,21 +37,23 @@ namespace Neo
                 if (remainder > BigInteger.Zero)
                     throw new ArgumentOutOfRangeException();
             }
-            return new BigDecimal(value, decimals);
+            return TR.Exit(new BigDecimal(value, decimals));
         }
 
         public static BigDecimal Parse(string s, byte decimals)
         {
+            TR.Enter();
             if (!TryParse(s, decimals, out BigDecimal result))
                 throw new FormatException();
-            return result;
+            return TR.Exit(result);
         }
 
         public Fixed8 ToFixed8()
         {
+            TR.Enter();
             try
             {
-                return new Fixed8((long)ChangeDecimals(8).value);
+                return TR.Exit(new Fixed8((long)ChangeDecimals(8).value));
             }
             catch (Exception ex)
             {
@@ -57,14 +63,16 @@ namespace Neo
 
         public override string ToString()
         {
+            TR.Enter();
             BigInteger divisor = BigInteger.Pow(10, decimals);
             BigInteger result = BigInteger.DivRem(value, divisor, out BigInteger remainder);
-            if (remainder == 0) return result.ToString();
-            return $"{result}.{remainder.ToString("d" + decimals)}".TrimEnd('0');
+            if (remainder == 0) return TR.Exit(result.ToString());
+            return TR.Exit($"{result}.{remainder.ToString("d" + decimals)}".TrimEnd('0'));
         }
 
         public static bool TryParse(string s, byte decimals, out BigDecimal result)
         {
+            TR.Enter();
             int e = 0;
             int index = s.IndexOfAny(new[] { 'e', 'E' });
             if (index >= 0)
@@ -72,7 +80,7 @@ namespace Neo
                 if (!sbyte.TryParse(s.Substring(index + 1), out sbyte e_temp))
                 {
                     result = default(BigDecimal);
-                    return false;
+                    return TR.Exit(false);
                 }
                 e = e_temp;
                 s = s.Substring(0, index);
@@ -88,17 +96,17 @@ namespace Neo
             if (ds < 0)
             {
                 result = default(BigDecimal);
-                return false;
+                return TR.Exit(false);
             }
             if (ds > 0)
                 s += new string('0', ds);
             if (!BigInteger.TryParse(s, out BigInteger value))
             {
                 result = default(BigDecimal);
-                return false;
+                return TR.Exit(false);
             }
             result = new BigDecimal(value, decimals);
-            return true;
+            return TR.Exit(true);
         }
     }
 }
