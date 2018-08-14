@@ -5,6 +5,7 @@ using Neo.VM;
 using Neo.Wallets;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -57,6 +58,7 @@ namespace Neo.Core
         {
             get
             {
+                TR.Log();
                 return new[] { Script };
             }
             set
@@ -70,13 +72,16 @@ namespace Neo.Core
 
         public virtual void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             ((IVerifiable)this).DeserializeUnsigned(reader);
             if (reader.ReadByte() != 1) throw new FormatException();
             Script = reader.ReadSerializable<Witness>();
+            TR.Exit();
         }
 
         void IVerifiable.DeserializeUnsigned(BinaryReader reader)
         {
+            TR.Enter();
             Version = reader.ReadUInt32();
             PrevHash = reader.ReadSerializable<UInt256>();
             MerkleRoot = reader.ReadSerializable<UInt256>();
@@ -84,30 +89,36 @@ namespace Neo.Core
             Index = reader.ReadUInt32();
             ConsensusData = reader.ReadUInt64();
             NextConsensus = reader.ReadSerializable<UInt160>();
+            TR.Exit();
         }
 
         byte[] IScriptContainer.GetMessage()
         {
-            return this.GetHashData();
+            TR.Enter();
+            return TR.Exit(this.GetHashData());
         }
 
         UInt160[] IVerifiable.GetScriptHashesForVerifying()
         {
+            TR.Enter();
             if (PrevHash == UInt256.Zero)
-                return new[] { Script.ScriptHash };
+                return TR.Exit(new[] { Script.ScriptHash });
             Header prev_header = Blockchain.Default.GetHeader(PrevHash);
             if (prev_header == null) throw new InvalidOperationException();
-            return new UInt160[] { prev_header.NextConsensus };
+            return TR.Exit(new UInt160[] { prev_header.NextConsensus });
         }
 
         public virtual void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             ((IVerifiable)this).SerializeUnsigned(writer);
             writer.Write((byte)1); writer.Write(Script);
+            TR.Exit();
         }
 
         void IVerifiable.SerializeUnsigned(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(Version);
             writer.Write(PrevHash);
             writer.Write(MerkleRoot);
@@ -115,10 +126,12 @@ namespace Neo.Core
             writer.Write(Index);
             writer.Write(ConsensusData);
             writer.Write(NextConsensus);
+            TR.Exit();
         }
 
         public virtual JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["hash"] = Hash.ToString();
             json["size"] = Size;
@@ -130,19 +143,20 @@ namespace Neo.Core
             json["nonce"] = ConsensusData.ToString("x16");
             json["nextconsensus"] = Wallet.ToAddress(NextConsensus);
             json["script"] = Script.ToJson();
-            return json;
+            return TR.Exit(json);
         }
 
         public bool Verify()
         {
-            if (Hash == Blockchain.GenesisBlock.Hash) return true;
-            if (Blockchain.Default.ContainsBlock(Hash)) return true;
+            TR.Enter();
+            if (Hash == Blockchain.GenesisBlock.Hash) return TR.Exit(true);
+            if (Blockchain.Default.ContainsBlock(Hash)) return TR.Exit(true);
             Header prev_header = Blockchain.Default.GetHeader(PrevHash);
-            if (prev_header == null) return false;
-            if (prev_header.Index + 1 != Index) return false;
-            if (prev_header.Timestamp >= Timestamp) return false;
-            if (!this.VerifyScripts()) return false;
-            return true;
+            if (prev_header == null) return TR.Exit(false);
+            if (prev_header.Index + 1 != Index) return TR.Exit(false);
+            if (prev_header.Timestamp >= Timestamp) return TR.Exit(false);
+            if (!this.VerifyScripts()) return TR.Exit(false);
+            return TR.Exit(true);
         }
     }
 }
