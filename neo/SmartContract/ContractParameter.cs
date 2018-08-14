@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.SmartContract
 {
@@ -17,6 +18,7 @@ namespace Neo.SmartContract
 
         public ContractParameter(ContractParameterType type)
         {
+            TR.Enter();
             this.Type = type;
             switch (type)
             {
@@ -50,10 +52,12 @@ namespace Neo.SmartContract
                 default:
                     throw new ArgumentException();
             }
+            TR.Exit();
         }
 
         public static ContractParameter FromJson(JObject json)
         {
+            TR.Enter();
             ContractParameter parameter = new ContractParameter
             {
                 Type = json["type"].AsEnum<ContractParameterType>()
@@ -90,11 +94,12 @@ namespace Neo.SmartContract
                     default:
                         throw new ArgumentException();
                 }
-            return parameter;
+            return TR.Exit(parameter);
         }
 
         public void SetValue(string text)
         {
+            TR.Enter();
             switch (Type)
             {
                 case ContractParameterType.Signature:
@@ -126,10 +131,12 @@ namespace Neo.SmartContract
                 default:
                     throw new ArgumentException();
             }
+            TR.Exit();
         }
 
         public JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["type"] = Type;
             if (Value != null)
@@ -153,11 +160,12 @@ namespace Neo.SmartContract
                         json["value"] = new JArray(((IList<ContractParameter>)Value).Select(p => p.ToJson()));
                         break;
                 }
-            return json;
+            return TR.Exit(json);
         }
 
         public override string ToString()
         {
+            TR.Enter();
             switch (Value)
             {
                 case null:
@@ -175,10 +183,11 @@ namespace Neo.SmartContract
                     if (data.Count > 0)
                         sb.Length -= 2;
                     sb.Append(']');
-                    return sb.ToString();
+                    return TR.Exit(sb.ToString());
                 default:
-                    return Value.ToString();
+                    return TR.Exit(Value.ToString());
             }
+            TR.Exit();
         }
     }
 }

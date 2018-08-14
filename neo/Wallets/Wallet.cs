@@ -11,6 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using ECPoint = Neo.Cryptography.ECC.ECPoint;
 using VMArray = Neo.VM.Types.Array;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -37,6 +38,7 @@ namespace Neo.Wallets
 
         public WalletAccount CreateAccount()
         {
+            TR.Enter();
             byte[] privateKey = new byte[32];
             using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
             {
@@ -44,54 +46,61 @@ namespace Neo.Wallets
             }
             WalletAccount account = CreateAccount(privateKey);
             Array.Clear(privateKey, 0, privateKey.Length);
-            return account;
+            return TR.Exit(account);
         }
 
         public WalletAccount CreateAccount(Contract contract, byte[] privateKey)
         {
+            TR.Enter();
             if (privateKey == null) return CreateAccount(contract);
-            return CreateAccount(contract, new KeyPair(privateKey));
+            return TR.Exit(CreateAccount(contract, new KeyPair(privateKey)));
         }
 
         public IEnumerable<Coin> FindUnspentCoins(params UInt160[] from)
         {
-            IEnumerable<UInt160> accounts = from.Length > 0 ? from : GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash);
-            return GetCoins(accounts).Where(p => p.State.HasFlag(CoinState.Confirmed) && !p.State.HasFlag(CoinState.Spent) && !p.State.HasFlag(CoinState.Frozen));
+            TR.Enter();
+            IEnumerable <UInt160> accounts = from.Length > 0 ? from : GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash);
+            return TR.Exit(GetCoins(accounts).Where(p => p.State.HasFlag(CoinState.Confirmed) && !p.State.HasFlag(CoinState.Spent) && !p.State.HasFlag(CoinState.Frozen)));
         }
 
         public virtual Coin[] FindUnspentCoins(UInt256 asset_id, Fixed8 amount, params UInt160[] from)
         {
-            return FindUnspentCoins(FindUnspentCoins(from), asset_id, amount);
+            TR.Enter();
+            return TR.Exit(FindUnspentCoins(FindUnspentCoins(from), asset_id, amount));
         }
 
         protected static Coin[] FindUnspentCoins(IEnumerable<Coin> unspents, UInt256 asset_id, Fixed8 amount)
         {
+            TR.Enter();
             Coin[] unspents_asset = unspents.Where(p => p.Output.AssetId == asset_id).ToArray();
             Fixed8 sum = unspents_asset.Sum(p => p.Output.Value);
             if (sum < amount) return null;
-            if (sum == amount) return unspents_asset;
+            if (sum == amount) return TR.Exit(unspents_asset);
             Coin[] unspents_ordered = unspents_asset.OrderByDescending(p => p.Output.Value).ToArray();
             int i = 0;
             while (unspents_ordered[i].Output.Value <= amount)
                 amount -= unspents_ordered[i++].Output.Value;
             if (amount == Fixed8.Zero)
-                return unspents_ordered.Take(i).ToArray();
+                return TR.Exit(unspents_ordered.Take(i).ToArray());
             else
-                return unspents_ordered.Take(i).Concat(new[] { unspents_ordered.Last(p => p.Output.Value >= amount) }).ToArray();
+                return TR.Exit(unspents_ordered.Take(i).Concat(new[] { unspents_ordered.Last(p => p.Output.Value >= amount) }).ToArray());
         }
 
         public WalletAccount GetAccount(ECPoint pubkey)
         {
-            return GetAccount(Contract.CreateSignatureRedeemScript(pubkey).ToScriptHash());
+            TR.Enter();
+            return TR.Exit(GetAccount(Contract.CreateSignatureRedeemScript(pubkey).ToScriptHash()));
         }
 
         public Fixed8 GetAvailable(UInt256 asset_id)
         {
-            return FindUnspentCoins().Where(p => p.Output.AssetId.Equals(asset_id)).Sum(p => p.Output.Value);
+            TR.Enter();
+            return TR.Exit(FindUnspentCoins().Where(p => p.Output.AssetId.Equals(asset_id)).Sum(p => p.Output.Value));
         }
 
         public BigDecimal GetAvailable(UIntBase asset_id)
         {
+            TR.Enter();
             if (asset_id is UInt160 asset_id_160)
             {
                 byte[] script;
@@ -106,21 +115,23 @@ namespace Neo.Wallets
                 ApplicationEngine engine = ApplicationEngine.Run(script);
                 byte decimals = (byte)engine.EvaluationStack.Pop().GetBigInteger();
                 BigInteger amount = ((VMArray)engine.EvaluationStack.Pop()).Aggregate(BigInteger.Zero, (x, y) => x + y.GetBigInteger());
-                return new BigDecimal(amount, decimals);
+                return TR.Exit(new BigDecimal(amount, decimals));
             }
             else
             {
-                return new BigDecimal(GetAvailable((UInt256)asset_id).GetData(), 8);
+                return TR.Exit(new BigDecimal(GetAvailable((UInt256)asset_id).GetData(), 8));
             }
         }
 
         public Fixed8 GetBalance(UInt256 asset_id)
         {
-            return GetCoins(GetAccounts().Select(p => p.ScriptHash)).Where(p => !p.State.HasFlag(CoinState.Spent) && p.Output.AssetId.Equals(asset_id)).Sum(p => p.Output.Value);
+            TR.Enter();
+            return TR.Exit(GetCoins(GetAccounts().Select(p => p.ScriptHash)).Where(p => !p.State.HasFlag(CoinState.Spent) && p.Output.AssetId.Equals(asset_id)).Sum(p => p.Output.Value));
         }
 
         public virtual UInt160 GetChangeAddress()
         {
+            TR.Enter();
             WalletAccount[] accounts = GetAccounts().ToArray();
             WalletAccount account = accounts.FirstOrDefault(p => p.IsDefault);
             if (account == null)
@@ -129,16 +140,18 @@ namespace Neo.Wallets
                 account = accounts.FirstOrDefault(p => !p.WatchOnly);
             if (account == null)
                 account = accounts.FirstOrDefault();
-            return account?.ScriptHash;
+            return TR.Exit(account?.ScriptHash);
         }
 
         public IEnumerable<Coin> GetCoins()
         {
-            return GetCoins(GetAccounts().Select(p => p.ScriptHash));
+            TR.Enter();
+            return TR.Exit(GetCoins(GetAccounts().Select(p => p.ScriptHash)));
         }
 
         public static byte[] GetPrivateKeyFromNEP2(string nep2, string passphrase, int N = 16384, int r = 8, int p = 8)
         {
+            TR.Enter();
             if (nep2 == null) throw new ArgumentNullException(nameof(nep2));
             if (passphrase == null) throw new ArgumentNullException(nameof(passphrase));
             byte[] data = nep2.Base58CheckDecode();
@@ -157,11 +170,12 @@ namespace Neo.Wallets
             string address = ToAddress(script_hash);
             if (!Encoding.ASCII.GetBytes(address).Sha256().Sha256().Take(4).SequenceEqual(addresshash))
                 throw new FormatException();
-            return prikey;
+            return TR.Exit(prikey);
         }
 
         public static byte[] GetPrivateKeyFromWIF(string wif)
         {
+            TR.Enter();
             if (wif == null) throw new ArgumentNullException();
             byte[] data = wif.Base58CheckDecode();
             if (data.Length != 34 || data[0] != 0x80 || data[33] != 0x01)
@@ -169,21 +183,23 @@ namespace Neo.Wallets
             byte[] privateKey = new byte[32];
             Buffer.BlockCopy(data, 1, privateKey, 0, privateKey.Length);
             Array.Clear(data, 0, data.Length);
-            return privateKey;
+            return TR.Exit(privateKey);
         }
 
         public IEnumerable<Coin> GetUnclaimedCoins()
         {
+            TR.Enter();
             IEnumerable<UInt160> accounts = GetAccounts().Where(p => !p.Lock && !p.WatchOnly).Select(p => p.ScriptHash);
             IEnumerable<Coin> coins = GetCoins(accounts);
             coins = coins.Where(p => p.Output.AssetId.Equals(Blockchain.GoverningToken.Hash));
             coins = coins.Where(p => p.State.HasFlag(CoinState.Confirmed) && p.State.HasFlag(CoinState.Spent));
             coins = coins.Where(p => !p.State.HasFlag(CoinState.Claimed) && !p.State.HasFlag(CoinState.Frozen));
-            return coins;
+            return TR.Exit(coins);
         }
 
         public virtual WalletAccount Import(X509Certificate2 cert)
         {
+            TR.Enter();
             byte[] privateKey;
             using (ECDsa ecdsa = cert.GetECDsaPrivateKey())
             {
@@ -191,27 +207,30 @@ namespace Neo.Wallets
             }
             WalletAccount account = CreateAccount(privateKey);
             Array.Clear(privateKey, 0, privateKey.Length);
-            return account;
+            return TR.Exit(account);
         }
 
         public virtual WalletAccount Import(string wif)
         {
+            TR.Enter();
             byte[] privateKey = GetPrivateKeyFromWIF(wif);
             WalletAccount account = CreateAccount(privateKey);
             Array.Clear(privateKey, 0, privateKey.Length);
-            return account;
+            return TR.Exit(account);
         }
 
         public virtual WalletAccount Import(string nep2, string passphrase)
         {
+            TR.Enter();
             byte[] privateKey = GetPrivateKeyFromNEP2(nep2, passphrase);
             WalletAccount account = CreateAccount(privateKey);
             Array.Clear(privateKey, 0, privateKey.Length);
-            return account;
+            return TR.Exit(account);
         }
 
         public T MakeTransaction<T>(T tx, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8)) where T : Transaction
         {
+            TR.Enter();
             if (tx.Outputs == null) tx.Outputs = new TransactionOutput[0];
             if (tx.Attributes == null) tx.Attributes = new TransactionAttribute[0];
             fee += tx.SystemFee;
@@ -266,11 +285,12 @@ namespace Neo.Wallets
             }
             tx.Inputs = pay_coins.Values.SelectMany(p => p.Unspents).Select(p => p.Reference).ToArray();
             tx.Outputs = outputs_new.ToArray();
-            return tx;
+            return TR.Exit(tx);
         }
 
         public Transaction MakeTransaction(List<TransactionAttribute> attributes, IEnumerable<TransferOutput> outputs, UInt160 from = null, UInt160 change_address = null, Fixed8 fee = default(Fixed8))
         {
+            TR.Enter();
             var cOutputs = outputs.Where(p => !p.IsGlobalAsset).GroupBy(p => new
             {
                 AssetId = (UInt160)p.AssetId,
@@ -372,11 +392,12 @@ namespace Neo.Wallets
                 };
             }
             tx = MakeTransaction(tx, from, change_address, fee);
-            return tx;
+            return TR.Exit(tx);
         }
 
         public bool Sign(ContractParametersContext context)
         {
+                        TR.Enter();
             bool fSuccess = false;
             foreach (UInt160 scriptHash in context.ScriptHashes)
             {
@@ -386,33 +407,36 @@ namespace Neo.Wallets
                 byte[] signature = context.Verifiable.Sign(key);
                 fSuccess |= context.AddSignature(account.Contract, key.PublicKey, signature);
             }
-            return fSuccess;
+            return TR.Exit(fSuccess);
         }
 
         public static string ToAddress(UInt160 scriptHash)
         {
+            TR.Enter();
             byte[] data = new byte[21];
             data[0] = Settings.Default.AddressVersion;
             Buffer.BlockCopy(scriptHash.ToArray(), 0, data, 1, 20);
-            return data.Base58CheckEncode();
+            return TR.Exit(data.Base58CheckEncode());
         }
 
         public static UInt160 ToScriptHash(string address)
         {
+            TR.Enter();
             byte[] data = address.Base58CheckDecode();
             if (data.Length != 21)
                 throw new FormatException();
             if (data[0] != Settings.Default.AddressVersion)
                 throw new FormatException();
-            return new UInt160(data.Skip(1).ToArray());
+            return TR.Exit(new UInt160(data.Skip(1).ToArray()));
         }
 
         public abstract bool VerifyPassword(string password);
 
         private static byte[] XOR(byte[] x, byte[] y)
         {
+            TR.Enter();
             if (x.Length != y.Length) throw new ArgumentException();
-            return x.Zip(y, (a, b) => (byte)(a ^ b)).ToArray();
+            return TR.Exit(x.Zip(y, (a, b) => (byte)(a ^ b)).ToArray());
         }
     }
 }

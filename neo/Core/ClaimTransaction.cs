@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -26,9 +27,11 @@ namespace Neo.Core
         /// <param name="reader">数据来源</param>
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version != 0) throw new FormatException();
             Claims = reader.ReadSerializableArray<CoinReference>();
             if (Claims.Length == 0) throw new FormatException();
+            TR.Exit();
         }
 
         /// <summary>
@@ -37,6 +40,7 @@ namespace Neo.Core
         /// <returns>返回需要校验的脚本Hash</returns>
         public override UInt160[] GetScriptHashesForVerifying()
         {
+            TR.Enter();
             HashSet<UInt160> hashes = new HashSet<UInt160>(base.GetScriptHashesForVerifying());
             foreach (var group in Claims.GroupBy(p => p.PrevHash))
             {
@@ -48,7 +52,7 @@ namespace Neo.Core
                     hashes.Add(tx.Outputs[claim.PrevIndex].ScriptHash);
                 }
             }
-            return hashes.OrderBy(p => p).ToArray();
+            return TR.Exit(hashes.OrderBy(p => p).ToArray());
         }
 
         /// <summary>
@@ -57,7 +61,9 @@ namespace Neo.Core
         /// <param name="writer">存放序列化后的结果</param>
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(Claims);
+            TR.Exit();
         }
 
         /// <summary>
@@ -66,9 +72,10 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["claims"] = new JArray(Claims.Select(p => p.ToJson()).ToArray());
-            return json;
+            return TR.Exit(json);
         }
 
         /// <summary>
@@ -77,24 +84,25 @@ namespace Neo.Core
         /// <returns>返回验证结果</returns>
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
-            if (!base.Verify(mempool)) return false;
+            TR.Enter();
+            if (!base.Verify(mempool)) return TR.Exit(false);
             if (Claims.Length != Claims.Distinct().Count())
-                return false;
+                return TR.Exit(false);
             if (mempool.OfType<ClaimTransaction>().Where(p => p != this).SelectMany(p => p.Claims).Intersect(Claims).Count() > 0)
-                return false;
+                return TR.Exit(false);
             TransactionResult result = GetTransactionResults().FirstOrDefault(p => p.AssetId == Blockchain.UtilityToken.Hash);
-            if (result == null || result.Amount > Fixed8.Zero) return false;
+            if (result == null || result.Amount > Fixed8.Zero) return TR.Exit(false);
             try
             {
-                return Blockchain.CalculateBonus(Claims, false) == -result.Amount;
+                return TR.Exit(Blockchain.CalculateBonus(Claims, false) == -result.Amount);
             }
             catch (ArgumentException)
             {
-                return false;
+                return TR.Exit(false);
             }
             catch (NotSupportedException)
             {
-                return false;
+                return TR.Exit(false);
             }
         }
     }

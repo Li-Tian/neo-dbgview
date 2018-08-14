@@ -5,6 +5,7 @@ using Neo.Wallets;
 using System;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -15,12 +16,13 @@ namespace Neo.Core
     {
         public static byte[] GetHashData(this IVerifiable verifiable)
         {
+            TR.Enter();
             using (MemoryStream ms = new MemoryStream())
             using (BinaryWriter writer = new BinaryWriter(ms))
             {
                 verifiable.SerializeUnsigned(writer);
                 writer.Flush();
-                return ms.ToArray();
+                return TR.Exit(ms.ToArray());
             }
         }
 
@@ -32,19 +34,22 @@ namespace Neo.Core
         /// <returns>返回签名后的结果</returns>
         public static byte[] Sign(this IVerifiable verifiable, KeyPair key)
         {
+            TR.Enter();
             using (key.Decrypt())
             {
-                return Crypto.Default.Sign(verifiable.GetHashData(), key.PrivateKey, key.PublicKey.EncodePoint(false).Skip(1).ToArray());
+                return TR.Exit(Crypto.Default.Sign(verifiable.GetHashData(), key.PrivateKey, key.PublicKey.EncodePoint(false).Skip(1).ToArray()));
             }
         }
 
         public static UInt160 ToScriptHash(this byte[] script)
         {
-            return new UInt160(Crypto.Default.Hash160(script));
+            TR.Enter();
+            return TR.Exit(new UInt160(Crypto.Default.Hash160(script)));
         }
 
         internal static bool VerifyScripts(this IVerifiable verifiable)
         {
+            TR.Enter();
             UInt160[] hashes;
             try
             {
@@ -52,9 +57,9 @@ namespace Neo.Core
             }
             catch (InvalidOperationException)
             {
-                return false;
+                return TR.Exit(false);
             }
-            if (hashes.Length != verifiable.Scripts.Length) return false;
+            if (hashes.Length != verifiable.Scripts.Length) return TR.Exit(false);
             for (int i = 0; i < hashes.Length; i++)
             {
                 byte[] verification = verifiable.Scripts[i].VerificationScript;
@@ -68,18 +73,18 @@ namespace Neo.Core
                 }
                 else
                 {
-                    if (hashes[i] != verifiable.Scripts[i].ScriptHash) return false;
+                    if (hashes[i] != verifiable.Scripts[i].ScriptHash) return TR.Exit(false);
                 }
                 using (StateReader service = new StateReader())
                 {
                     ApplicationEngine engine = new ApplicationEngine(TriggerType.Verification, verifiable, Blockchain.Default, service, Fixed8.Zero);
                     engine.LoadScript(verification, false);
                     engine.LoadScript(verifiable.Scripts[i].InvocationScript, true);
-                    if (!engine.Execute()) return false;
-                    if (engine.EvaluationStack.Count != 1 || !engine.EvaluationStack.Pop().GetBoolean()) return false;
+                    if (!engine.Execute()) return TR.Exit(false);
+                    if (engine.EvaluationStack.Count != 1 || !engine.EvaluationStack.Pop().GetBoolean()) return TR.Exit(false);
                 }
             }
-            return true;
+            return TR.Exit(true);
         }
     }
 }

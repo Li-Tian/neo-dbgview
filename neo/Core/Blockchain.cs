@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -148,7 +149,9 @@ namespace Neo.Core
 
         static Blockchain()
         {
+            TR.Enter();
             GenesisBlock.RebuildMerkleRoot();
+            TR.Exit();
         }
 
         /// <summary>
@@ -166,6 +169,7 @@ namespace Neo.Core
 
         public static Fixed8 CalculateBonus(IEnumerable<CoinReference> inputs, bool ignoreClaimed = true)
         {
+            TR.Enter();
             List<SpentCoin> unclaimed = new List<SpentCoin>();
             foreach (var group in inputs.GroupBy(p => p.PrevHash))
             {
@@ -185,11 +189,12 @@ namespace Neo.Core
                     unclaimed.Add(claimed);
                 }
             }
-            return CalculateBonusInternal(unclaimed);
+            return TR.Exit(CalculateBonusInternal(unclaimed));
         }
 
         public static Fixed8 CalculateBonus(IEnumerable<CoinReference> inputs, uint height_end)
         {
+            TR.Enter();
             List<SpentCoin> unclaimed = new List<SpentCoin>();
             foreach (var group in inputs.GroupBy(p => p.PrevHash))
             {
@@ -208,11 +213,12 @@ namespace Neo.Core
                     });
                 }
             }
-            return CalculateBonusInternal(unclaimed);
+            return TR.Exit(CalculateBonusInternal(unclaimed));
         }
 
         private static Fixed8 CalculateBonusInternal(IEnumerable<SpentCoin> unclaimed)
         {
+            TR.Enter();
             Fixed8 amount_claimed = Fixed8.Zero;
             foreach (var group in unclaimed.GroupBy(p => new { p.StartHeight, p.EndHeight }))
             {
@@ -244,7 +250,7 @@ namespace Neo.Core
                 amount += (uint)(Default.GetSysFeeAmount(group.Key.EndHeight - 1) - (group.Key.StartHeight == 0 ? 0 : Default.GetSysFeeAmount(group.Key.StartHeight - 1)));
                 amount_claimed += group.Sum(p => p.Value) / 100000000 * amount;
             }
-            return amount_claimed;
+            return TR.Exit(amount_claimed);
         }
 
         /// <summary>
@@ -263,7 +269,8 @@ namespace Neo.Core
 
         public bool ContainsUnspent(CoinReference input)
         {
-            return ContainsUnspent(input.PrevHash, input.PrevIndex);
+            TR.Enter();
+            return TR.Exit(ContainsUnspent(input.PrevHash, input.PrevIndex));
         }
 
         public abstract bool ContainsUnspent(UInt256 hash, ushort index);
@@ -287,9 +294,14 @@ namespace Neo.Core
         /// <returns>返回对应的区块信息</returns>
         public Block GetBlock(uint height)
         {
+            TR.Enter();
             UInt256 hash = GetBlockHash(height);
-            if (hash == null) return null;
-            return GetBlock(hash);
+            if (hash == null)
+            {
+                TR.Exit();
+                return null;
+            }
+            return TR.Exit(GetBlock(hash));
         }
 
         /// <summary>
@@ -331,7 +343,8 @@ namespace Neo.Core
         /// <returns>返回记账人的合约地址</returns>
         public static UInt160 GetConsensusAddress(ECPoint[] validators)
         {
-            return Contract.CreateMultiSigRedeemScript(validators.Length - (validators.Length - 1) / 3, validators).ToScriptHash();
+            TR.Enter();
+            return TR.Exit(Contract.CreateMultiSigRedeemScript(validators.Length - (validators.Length - 1) / 3, validators).ToScriptHash());
         }
 
         private List<ECPoint> _validators = new List<ECPoint>();
@@ -341,18 +354,20 @@ namespace Neo.Core
         /// <returns>返回一组公钥，表示下一个区块的记账人列表</returns>
         public ECPoint[] GetValidators()
         {
+            TR.Enter();
             lock (_validators)
             {
                 if (_validators.Count == 0)
                 {
                     _validators.AddRange(GetValidators(Enumerable.Empty<Transaction>()));
                 }
-                return _validators.ToArray();
+                return TR.Exit(_validators.ToArray());
             }
         }
 
         public virtual IEnumerable<ECPoint> GetValidators(IEnumerable<Transaction> others)
         {
+            TR.Enter();
             DataCache<UInt160, AccountState> accounts = GetStates<UInt160, AccountState>();
             DataCache<ECPoint, ValidatorState> validators = GetStates<ECPoint, ValidatorState>();
             MetaDataCache<ValidatorsCountState> validators_count = GetMetaData<ValidatorsCountState>();
@@ -441,7 +456,7 @@ namespace Neo.Core
                     hashSet.Add(StandbyValidators[i]);
                 result = hashSet;
             }
-            return result.OrderBy(p => p);
+            return TR.Exit(result.OrderBy(p => p));
         }
 
         /// <summary>
@@ -460,7 +475,8 @@ namespace Neo.Core
 
         byte[] IScriptTable.GetScript(byte[] script_hash)
         {
-            return GetContract(new UInt160(script_hash)).Script;
+            TR.Enter();
+            return TR.Exit(GetContract(new UInt160(script_hash)).Script);
         }
 
         public abstract StorageItem GetStorageItem(StorageKey key);
@@ -472,7 +488,8 @@ namespace Neo.Core
         /// <returns>返回对应的系统费用的总量</returns>
         public virtual long GetSysFeeAmount(uint height)
         {
-            return GetSysFeeAmount(GetBlockHash(height));
+            TR.Enter();
+            return TR.Exit(GetSysFeeAmount(GetBlockHash(height)));
         }
 
         /// <summary>
@@ -489,7 +506,8 @@ namespace Neo.Core
         /// <returns>返回对应的交易信息</returns>
         public Transaction GetTransaction(UInt256 hash)
         {
-            return GetTransaction(hash, out _);
+            TR.Enter();
+            return TR.Exit(GetTransaction(hash, out _));
         }
 
         /// <summary>
@@ -525,20 +543,25 @@ namespace Neo.Core
         /// <param name="block">区块</param>
         protected void OnPersistCompleted(Block block)
         {
+            TR.Enter();
             PersistCompleted?.Invoke(this, block);
+            TR.Exit();
         }
 
         protected void OnPersistUnlocked(Block block)
         {
+            TR.Enter();
             lock (_validators)
             {
                 _validators.Clear();
             }
             PersistUnlocked?.Invoke(this, block);
+            TR.Exit();
         }
 
         protected void ProcessAccountStateDescriptor(StateDescriptor descriptor, DataCache<UInt160, AccountState> accounts, DataCache<ECPoint, ValidatorState> validators, MetaDataCache<ValidatorsCountState> validators_count)
         {
+            TR.Enter();
             UInt160 hash = new UInt160(descriptor.Key);
             AccountState account = accounts.GetAndChange(hash, () => new AccountState(hash));
             switch (descriptor.Field)
@@ -566,10 +589,12 @@ namespace Neo.Core
                         validators.GetAndChange(pubkey, () => new ValidatorState(pubkey)).Votes += balance;
                     break;
             }
+            TR.Exit();
         }
 
         protected void ProcessValidatorStateDescriptor(StateDescriptor descriptor, DataCache<ECPoint, ValidatorState> validators)
         {
+            TR.Enter();
             ECPoint pubkey = ECPoint.DecodePoint(descriptor.Key, ECCurve.Secp256r1);
             ValidatorState validator = validators.GetAndChange(pubkey, () => new ValidatorState(pubkey));
             switch (descriptor.Field)
@@ -578,6 +603,7 @@ namespace Neo.Core
                     validator.Registered = BitConverter.ToBoolean(descriptor.Value, 0);
                     break;
             }
+            TR.Exit();
         }
 
         /// <summary>
@@ -587,9 +613,10 @@ namespace Neo.Core
         /// <returns>返回注册后的区块链实例</returns>
         public static Blockchain RegisterBlockchain(Blockchain blockchain)
         {
+            TR.Enter();
             if (Default != null) Default.Dispose();
             Default = blockchain ?? throw new ArgumentNullException();
-            return blockchain;
+            return TR.Exit(blockchain);
         }
     }
 }

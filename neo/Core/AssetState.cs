@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -32,7 +33,8 @@ namespace Neo.Core
 
         AssetState ICloneable<AssetState>.Clone()
         {
-            return new AssetState
+            TR.Enter();
+            return TR.Exit(new AssetState
             {
                 AssetId = AssetId,
                 AssetType = AssetType,
@@ -49,11 +51,12 @@ namespace Neo.Core
                 Expiration = Expiration,
                 IsFrozen = IsFrozen,
                 _names = _names
-            };
+            });
         }
 
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             base.Deserialize(reader);
             AssetId = reader.ReadSerializable<UInt256>();
             AssetType = (AssetType)reader.ReadByte();
@@ -69,10 +72,12 @@ namespace Neo.Core
             Issuer = reader.ReadSerializable<UInt160>();
             Expiration = reader.ReadUInt32();
             IsFrozen = reader.ReadBoolean();
+            TR.Exit();
         }
 
         void ICloneable<AssetState>.FromReplica(AssetState replica)
         {
+            TR.Enter();
             AssetId = replica.AssetId;
             AssetType = replica.AssetType;
             Name = replica.Name;
@@ -88,13 +93,15 @@ namespace Neo.Core
             Expiration = replica.Expiration;
             IsFrozen = replica.IsFrozen;
             _names = replica._names;
+            TR.Exit();
         }
 
         private Dictionary<CultureInfo, string> _names;
         public string GetName(CultureInfo culture = null)
         {
-            if (AssetType == AssetType.GoverningToken) return "NEO";
-            if (AssetType == AssetType.UtilityToken) return "NeoGas";
+            TR.Enter();
+            if (AssetType == AssetType.GoverningToken) return TR.Exit("NEO");
+            if (AssetType == AssetType.UtilityToken) return TR.Exit("NeoGas");
             if (_names == null)
             {
                 JObject name_obj;
@@ -114,15 +121,15 @@ namespace Neo.Core
             if (culture == null) culture = CultureInfo.CurrentCulture;
             if (_names.TryGetValue(culture, out string name))
             {
-                return name;
+                return TR.Exit(name);
             }
             else if (_names.TryGetValue(en, out name))
             {
-                return name;
+                return TR.Exit(name);
             }
             else
             {
-                return _names.Values.First();
+                return TR.Exit(_names.Values.First());
             }
         }
 
@@ -130,6 +137,7 @@ namespace Neo.Core
 
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             base.Serialize(writer);
             writer.Write(AssetId);
             writer.Write((byte)AssetType);
@@ -145,10 +153,12 @@ namespace Neo.Core
             writer.Write(Issuer);
             writer.Write(Expiration);
             writer.Write(IsFrozen);
+            TR.Exit();
         }
 
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["id"] = AssetId.ToString();
             json["type"] = AssetType;
@@ -168,12 +178,13 @@ namespace Neo.Core
             json["issuer"] = Wallet.ToAddress(Issuer);
             json["expiration"] = Expiration;
             json["frozen"] = IsFrozen;
-            return json;
+            return TR.Exit(json);
         }
 
         public override string ToString()
         {
-            return GetName();
+            TR.Enter();
+            return TR.Exit(GetName());
         }
     }
 }

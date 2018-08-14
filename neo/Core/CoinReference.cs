@@ -3,6 +3,7 @@ using Neo.IO.Json;
 using Neo.VM;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -24,10 +25,12 @@ namespace Neo.Core
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             PrevHash = reader.ReadSerializable<UInt256>();
             PrevIndex = reader.ReadUInt16();
+            TR.Exit();
         }
-
+        
         /// <summary>
         /// 比较当前对象与指定对象是否相等
         /// </summary>
@@ -35,9 +38,10 @@ namespace Neo.Core
         /// <returns>返回对象是否相等</returns>
         public bool Equals(CoinReference other)
         {
-            if (ReferenceEquals(this, other)) return true;
-            if (ReferenceEquals(null, other)) return false;
-            return PrevHash.Equals(other.PrevHash) && PrevIndex.Equals(other.PrevIndex);
+            TR.Enter();
+            if (ReferenceEquals(this, other)) return TR.Exit(true);
+            if (ReferenceEquals(null, other)) return TR.Exit(false);
+            return TR.Exit(PrevHash.Equals(other.PrevHash) && PrevIndex.Equals(other.PrevIndex));
         }
 
         /// <summary>
@@ -47,10 +51,11 @@ namespace Neo.Core
         /// <returns>返回对象是否相等</returns>
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(this, obj)) return true;
-            if (ReferenceEquals(null, obj)) return false;
-            if (!(obj is CoinReference)) return false;
-            return Equals((CoinReference)obj);
+            TR.Enter();
+            if (ReferenceEquals(this, obj)) return TR.Exit(true);
+            if (ReferenceEquals(null, obj)) return TR.Exit(false);
+            if (!(obj is CoinReference)) return TR.Exit(false);
+            return TR.Exit(Equals((CoinReference)obj));
         }
 
         /// <summary>
@@ -59,13 +64,16 @@ namespace Neo.Core
         /// <returns>返回对象的HashCode</returns>
         public override int GetHashCode()
         {
-            return PrevHash.GetHashCode() + PrevIndex.GetHashCode();
+            TR.Enter();
+            return TR.Exit(PrevHash.GetHashCode() + PrevIndex.GetHashCode());
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(PrevHash);
             writer.Write(PrevIndex);
+            TR.Exit();
         }
 
         /// <summary>
@@ -74,10 +82,11 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["txid"] = PrevHash.ToString();
             json["vout"] = PrevIndex;
-            return json;
+            return TR.Exit(json);
         }
     }
 }

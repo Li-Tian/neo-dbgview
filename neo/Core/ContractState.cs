@@ -3,6 +3,7 @@ using Neo.IO.Json;
 using Neo.SmartContract;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -40,7 +41,8 @@ namespace Neo.Core
 
         ContractState ICloneable<ContractState>.Clone()
         {
-            return new ContractState
+            TR.Enter();
+            return TR.Exit(new ContractState
             {
                 Script = Script,
                 ParameterList = ParameterList,
@@ -51,11 +53,12 @@ namespace Neo.Core
                 Author = Author,
                 Email = Email,
                 Description = Description
-            };
+            });
         }
 
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             base.Deserialize(reader);
             Script = reader.ReadVarBytes();
             ParameterList = reader.ReadVarBytes().Select(p => (ContractParameterType)p).ToArray();
@@ -66,10 +69,12 @@ namespace Neo.Core
             Author = reader.ReadVarString();
             Email = reader.ReadVarString();
             Description = reader.ReadVarString();
+            TR.Exit();
         }
 
         void ICloneable<ContractState>.FromReplica(ContractState replica)
         {
+            TR.Enter();
             Script = replica.Script;
             ParameterList = replica.ParameterList;
             ReturnType = replica.ReturnType;
@@ -79,10 +84,12 @@ namespace Neo.Core
             Author = replica.Author;
             Email = replica.Email;
             Description = replica.Description;
+            TR.Exit();
         }
 
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             base.Serialize(writer);
             writer.WriteVarBytes(Script);
             writer.WriteVarBytes(ParameterList.Cast<byte>().ToArray());
@@ -93,10 +100,12 @@ namespace Neo.Core
             writer.WriteVarString(Author);
             writer.WriteVarString(Email);
             writer.WriteVarString(Description);
+            TR.Exit();
         }
 
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["hash"] = ScriptHash.ToString();
             json["script"] = Script.ToHexString();
@@ -110,7 +119,7 @@ namespace Neo.Core
             json["properties"] = new JObject();
             json["properties"]["storage"] = HasStorage;
             json["properties"]["dynamic_invoke"] = HasDynamicInvoke;
-            return json;
+            return TR.Exit(json);
         }
     }
 }
