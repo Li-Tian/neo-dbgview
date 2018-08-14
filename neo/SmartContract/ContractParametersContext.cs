@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.SmartContract
 {
@@ -23,13 +24,16 @@ namespace Neo.SmartContract
 
             public ContextItem(Contract contract)
             {
+                TR.Enter();
                 this.Script = contract.Script;
                 this.Parameters = contract.ParameterList.Select(p => new ContractParameter { Type = p }).ToArray();
+                TR.Exit();
             }
 
             public static ContextItem FromJson(JObject json)
             {
-                return new ContextItem
+                TR.Enter();
+                return TR.Exit(new ContextItem
                 {
                     Script = json["script"]?.AsString().HexToBytes(),
                     Parameters = ((JArray)json["parameters"]).Select(p => ContractParameter.FromJson(p)).ToArray(),
@@ -38,11 +42,12 @@ namespace Neo.SmartContract
                         PublicKey = ECPoint.Parse(p.Key, ECCurve.Secp256r1),
                         Signature = p.Value.AsString().HexToBytes()
                     }).ToDictionary(p => p.PublicKey, p => p.Signature)
-                };
+                });
             }
 
             public JObject ToJson()
             {
+                TR.Enter();
                 JObject json = new JObject();
                 if (Script != null)
                     json["script"] = Script.ToHexString();
@@ -53,7 +58,7 @@ namespace Neo.SmartContract
                     foreach (var signature in Signatures)
                         json["signatures"][signature.Key.ToString()] = signature.Value.ToHexString();
                 }
-                return json;
+                return TR.Exit(json);
             }
         }
 
@@ -85,29 +90,33 @@ namespace Neo.SmartContract
 
         public ContractParametersContext(IVerifiable verifiable)
         {
+            TR.Enter();
             this.Verifiable = verifiable;
             this.ContextItems = new Dictionary<UInt160, ContextItem>();
+            TR.Exit();
         }
 
         public bool Add(Contract contract, int index, object parameter)
         {
+            TR.Enter();
             ContextItem item = CreateItem(contract);
             if (item == null) return false;
             item.Parameters[index].Value = parameter;
-            return true;
+            return TR.Exit(true);
         }
 
         public bool AddSignature(Contract contract, ECPoint pubkey, byte[] signature)
         {
+            TR.Enter();
             if (contract.IsMultiSigContract())
             {
                 ContextItem item = CreateItem(contract);
-                if (item == null) return false;
-                if (item.Parameters.All(p => p.Value != null)) return false;
+                if (item == null) return TR.Exit(false);
+                if (item.Parameters.All(p => p.Value != null)) return TR.Exit(false);
                 if (item.Signatures == null)
                     item.Signatures = new Dictionary<ECPoint, byte[]>();
                 else if (item.Signatures.ContainsKey(pubkey))
-                    return false;
+                    return TR.Exit(false);
                 List<ECPoint> points = new List<ECPoint>();
                 {
                     int i = 0;
@@ -126,7 +135,7 @@ namespace Neo.SmartContract
                         i += 33;
                     }
                 }
-                if (!points.Contains(pubkey)) return false;
+                if (!points.Contains(pubkey)) return TR.Exit(false);
                 item.Signatures.Add(pubkey, signature);
                 if (item.Signatures.Count == contract.ParameterList.Length)
                 {
@@ -145,7 +154,7 @@ namespace Neo.SmartContract
                             throw new InvalidOperationException();
                     item.Signatures = null;
                 }
-                return true;
+                return TR.Exit(true);
             }
             else
             {
@@ -160,25 +169,27 @@ namespace Neo.SmartContract
                 if(index == -1) {
                     // unable to find ContractParameterType.Signature in contract.ParameterList 
                     // return now to prevent array index out of bounds exception
-                    return false;
+                    return TR.Exit(false);
                 }
-                return Add(contract, index, signature);
+                return TR.Exit(Add(contract, index, signature));
             }
         }
 
         private ContextItem CreateItem(Contract contract)
         {
+            TR.Enter();
             if (ContextItems.TryGetValue(contract.ScriptHash, out ContextItem item))
-                return item;
+                return TR.Exit(item);
             if (!ScriptHashes.Contains(contract.ScriptHash))
                 return null;
             item = new ContextItem(contract);
             ContextItems.Add(contract.ScriptHash, item);
-            return item;
+            return TR.Exit(item);
         }
 
         public static ContractParametersContext FromJson(JObject json)
         {
+            TR.Enter();
             IVerifiable verifiable = typeof(ContractParametersContext).GetTypeInfo().Assembly.CreateInstance(json["type"].AsString()) as IVerifiable;
             if (verifiable == null) throw new FormatException();
             using (MemoryStream ms = new MemoryStream(json["hex"].AsString().HexToBytes(), false))
@@ -191,23 +202,30 @@ namespace Neo.SmartContract
             {
                 context.ContextItems.Add(UInt160.Parse(property.Key), ContextItem.FromJson(property.Value));
             }
-            return context;
+            return TR.Exit(context);
         }
 
         public ContractParameter GetParameter(UInt160 scriptHash, int index)
         {
-            return GetParameters(scriptHash)?[index];
+            TR.Enter();
+            return TR.Exit(GetParameters(scriptHash)?[index]);
         }
 
         public IReadOnlyList<ContractParameter> GetParameters(UInt160 scriptHash)
         {
+            TR.Enter();
             if (!ContextItems.TryGetValue(scriptHash, out ContextItem item))
+            {
+                TR.Exit();
                 return null;
-            return item.Parameters;
+            }
+            return TR.Exit(item.Parameters);
+
         }
 
         public Witness[] GetScripts()
         {
+            TR.Enter();
             if (!Completed) throw new InvalidOperationException();
             Witness[] scripts = new Witness[ScriptHashes.Count];
             for (int i = 0; i < ScriptHashes.Count; i++)
@@ -226,16 +244,18 @@ namespace Neo.SmartContract
                     };
                 }
             }
-            return scripts;
+            return TR.Exit(scripts);
         }
 
         public static ContractParametersContext Parse(string value)
         {
-            return FromJson(JObject.Parse(value));
+            TR.Enter();
+            return TR.Exit(FromJson(JObject.Parse(value)));
         }
 
         public JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["type"] = Verifiable.GetType().FullName;
             using (MemoryStream ms = new MemoryStream())
@@ -248,12 +268,13 @@ namespace Neo.SmartContract
             json["items"] = new JObject();
             foreach (var item in ContextItems)
                 json["items"][item.Key.ToString()] = item.Value.ToJson();
-            return json;
+            return TR.Exit(json);
         }
 
         public override string ToString()
         {
-            return ToJson().ToString();
+            TR.Enter();
+            return TR.Exit(ToJson().ToString());
         }
     }
 }

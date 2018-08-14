@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using DbgViewTR;
 
 namespace Neo.IO.Caching
 {
@@ -10,13 +11,18 @@ namespace Neo.IO.Caching
         /// <summary>
         /// Constructor
         /// </summary>
-        public ReflectionCache() { }
+        public ReflectionCache()
+        {
+            TR.Enter();
+            TR.Exit();
+        }
         /// <summary>
         /// Constructor
         /// </summary>
         /// <typeparam name="EnumType">Enum type</typeparam>
         public static ReflectionCache<T> CreateFromEnum<EnumType>() where EnumType : struct, IConvertible
         {
+            TR.Enter();
             Type enumType = typeof(EnumType);
 
             if (!enumType.GetTypeInfo().IsEnum)
@@ -42,6 +48,7 @@ namespace Neo.IO.Caching
 
                 // Append to cache
                 r.Add((T)t, attribute.Type);
+                TR.Exit();
             }
             return r;
         }
@@ -52,13 +59,14 @@ namespace Neo.IO.Caching
         /// <param name="def">Default value</param>
         public object CreateInstance(T key, object def = null)
         {
+            TR.Enter();
             Type tp;
 
             // Get Type from cache
             if (TryGetValue(key, out tp)) return Activator.CreateInstance(tp);
 
             // return null
-            return def;
+            return TR.Exit(def);
         }
         /// <summary>
         /// Create object from key
@@ -68,13 +76,14 @@ namespace Neo.IO.Caching
         /// <param name="def">Default value</param>
         public K CreateInstance<K>(T key, K def = default(K))
         {
+            TR.Enter();
             Type tp;
 
             // Get Type from cache
             if (TryGetValue(key, out tp)) return (K)Activator.CreateInstance(tp);
 
             // return null
-            return def;
+            return TR.Exit(def);
         }
     }
 }
