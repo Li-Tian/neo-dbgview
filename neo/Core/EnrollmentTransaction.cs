@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -43,8 +44,10 @@ namespace Neo.Core
         /// <param name="reader">数据来源</param>
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version != 0) throw new FormatException();
             PublicKey = ECPoint.DeserializeFrom(reader, ECCurve.Secp256r1);
+            TR.Exit();
         }
 
         /// <summary>
@@ -53,7 +56,8 @@ namespace Neo.Core
         /// <returns>返回需要校验的脚本Hash</returns>
         public override UInt160[] GetScriptHashesForVerifying()
         {
-            return base.GetScriptHashesForVerifying().Union(new UInt160[] { ScriptHash }).OrderBy(p => p).ToArray();
+            TR.Enter();
+            return TR.Exit(base.GetScriptHashesForVerifying().Union(new UInt160[] { ScriptHash }).OrderBy(p => p).ToArray());
         }
 
         /// <summary>
@@ -62,7 +66,9 @@ namespace Neo.Core
         /// <param name="writer">存放序列化后的结果</param>
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(PublicKey);
+            TR.Exit();
         }
 
         /// <summary>
@@ -71,14 +77,16 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["pubkey"] = PublicKey.ToString();
-            return json;
+            return TR.Exit(json);
         }
 
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
-            return false;
+            TR.Enter();
+            return TR.Exit(false);
         }
     }
 }
