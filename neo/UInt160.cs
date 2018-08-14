@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo
 {

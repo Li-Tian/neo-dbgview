@@ -365,7 +365,10 @@ namespace Neo.Network
             TR.Log();
             TcpRemoteNode remoteNode = new TcpRemoteNode(this, remoteEndpoint);
             TR.Log();
-            if (await remoteNode.ConnectAsync())
+            IndentContext ic = TR.SaveContextAndShuffle();
+            bool connected = await remoteNode.ConnectAsync();
+            TR.RestoreContext(ic);
+            if (connected)
             {
                 TR.Log();
                 OnConnected(remoteNode);
@@ -384,14 +387,15 @@ namespace Neo.Network
                     if (seedsToTake == 0) break;
                     string[] p = hostAndPort.Split(':');
                     IPEndPoint seed;
+                    IndentContext ic = TR.SaveContextAndShuffle();
                     try
                     {
-                        IndentContext ic = TR.SaveContextAndShuffle();
                         seed = GetIPEndpointFromHostPortAsync(p[0], int.Parse(p[1])).Result;
                         TR.RestoreContext(ic);
                     }
                     catch (AggregateException)
                     {
+                        TR.RestoreContext(ic);
                         continue;
                     }
                     if (seed == null) continue;
