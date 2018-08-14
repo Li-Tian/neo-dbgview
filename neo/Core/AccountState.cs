@@ -5,6 +5,7 @@ using Neo.VM;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -22,25 +23,29 @@ namespace Neo.Core
 
         public AccountState(UInt160 hash)
         {
+            TR.Enter();
             this.ScriptHash = hash;
             this.IsFrozen = false;
             this.Votes = new ECPoint[0];
             this.Balances = new Dictionary<UInt256, Fixed8>();
+            TR.Exit();
         }
 
         AccountState ICloneable<AccountState>.Clone()
         {
-            return new AccountState
+            TR.Enter();
+            return TR.Exit(new AccountState
             {
                 ScriptHash = ScriptHash,
                 IsFrozen = IsFrozen,
                 Votes = Votes,
                 Balances = Balances.ToDictionary(p => p.Key, p => p.Value)
-            };
+            });
         }
 
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             base.Deserialize(reader);
             ScriptHash = reader.ReadSerializable<UInt160>();
             IsFrozen = reader.ReadBoolean();
@@ -55,25 +60,30 @@ namespace Neo.Core
                 Fixed8 value = reader.ReadSerializable<Fixed8>();
                 Balances.Add(assetId, value);
             }
+            TR.Exit();
         }
 
         void ICloneable<AccountState>.FromReplica(AccountState replica)
         {
+            TR.Enter();
             ScriptHash = replica.ScriptHash;
             IsFrozen = replica.IsFrozen;
             Votes = replica.Votes;
             Balances = replica.Balances;
+            TR.Exit();
         }
 
         public Fixed8 GetBalance(UInt256 asset_id)
         {
+            TR.Enter();
             if (!Balances.TryGetValue(asset_id, out Fixed8 value))
                 value = Fixed8.Zero;
-            return value;
+            return TR.Exit(value);
         }
 
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             base.Serialize(writer);
             writer.Write(ScriptHash);
             writer.Write(IsFrozen);
@@ -85,10 +95,12 @@ namespace Neo.Core
                 writer.Write(pair.Key);
                 writer.Write(pair.Value);
             }
+            TR.Exit();
         }
 
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["script_hash"] = ScriptHash.ToString();
             json["frozen"] = IsFrozen;
@@ -98,9 +110,9 @@ namespace Neo.Core
                 JObject balance = new JObject();
                 balance["asset"] = p.Key.ToString();
                 balance["value"] = p.Value.ToString();
-                return balance;
+                return TR.Exit(balance);
             }));
-            return json;
+            return TR.Exit(json);
         }
     }
 }
