@@ -3,6 +3,7 @@ using Neo.IO.Json;
 using Neo.VM;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -14,19 +15,24 @@ namespace Neo.Core
 
         public virtual void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             if (reader.ReadByte() != StateVersion) throw new FormatException();
+            TR.Exit();
         }
 
         public virtual void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(StateVersion);
+            TR.Exit();
         }
 
         public virtual JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["version"] = StateVersion;
-            return json;
+            return TR.Exit(json);
         }
     }
 }
