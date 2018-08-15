@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.Cryptography
 {
@@ -19,6 +20,7 @@ namespace Neo.Cryptography
         /// <returns>返回解码后的字节数组</returns>
         public static byte[] Decode(string input)
         {
+            TR.Enter();
             BigInteger bi = BigInteger.Zero;
             for (int i = input.Length - 1; i >= 0; i--)
             {
@@ -37,7 +39,7 @@ namespace Neo.Cryptography
             }
             byte[] tmp = new byte[bytes.Length - (stripSignByte ? 1 : 0) + leadingZeros];
             Array.Copy(bytes, stripSignByte ? 1 : 0, tmp, leadingZeros, tmp.Length - leadingZeros);
-            return tmp;
+            return TR.Exit(tmp);
         }
 
         /// <summary>
@@ -47,6 +49,7 @@ namespace Neo.Cryptography
         /// <returns>返回编码后的字符串</returns>
         public static string Encode(byte[] input)
         {
+            TR.Enter();
             BigInteger value = new BigInteger(new byte[1].Concat(input).Reverse().ToArray());
             StringBuilder sb = new StringBuilder();
             while (value >= 58)
@@ -63,7 +66,7 @@ namespace Neo.Cryptography
                 else
                     break;
             }
-            return sb.ToString();
+            return TR.Exit(sb.ToString());
         }
     }
 }
