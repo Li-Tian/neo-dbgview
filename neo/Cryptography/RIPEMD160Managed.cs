@@ -3,6 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
+using DbgViewTR;
 
 namespace Neo.Cryptography
 {
@@ -22,11 +23,13 @@ namespace Neo.Cryptography
 
         public RIPEMD160Managed()
         {
+            TR.Enter();
             _stateMD160 = new uint[5];
             _blockDWords = new uint[16];
             _buffer = new byte[64];
 
             InitializeState();
+            TR.Exit();
         }
 
         //
@@ -35,23 +38,28 @@ namespace Neo.Cryptography
 
         public override void Initialize()
         {
+            TR.Enter();
             InitializeState();
 
             // Zeroize potentially sensitive information.
             Array.Clear(_blockDWords, 0, _blockDWords.Length);
             Array.Clear(_buffer, 0, _buffer.Length);
+            TR.Exit();
         }
 
         [System.Security.SecuritySafeCritical]  // auto-generated
         protected override void HashCore(byte[] rgb, int ibStart, int cbSize)
         {
+            TR.Enter();
             _HashData(rgb, ibStart, cbSize);
+            TR.Exit();
         }
 
         [System.Security.SecuritySafeCritical]  // auto-generated
         protected override byte[] HashFinal()
         {
-            return _EndHash();
+            TR.Enter();
+            return TR.Exit(_EndHash());
         }
 
         //
@@ -60,6 +68,7 @@ namespace Neo.Cryptography
 
         private void InitializeState()
         {
+            TR.Enter();
             _count = 0;
 
             // Use the same chaining values (IVs) as in SHA1, 
@@ -69,11 +78,13 @@ namespace Neo.Cryptography
             _stateMD160[2] = 0x98badcfe;
             _stateMD160[3] = 0x10325476;
             _stateMD160[4] = 0xc3d2e1f0;
+            TR.Exit();
         }
 
         [System.Security.SecurityCritical]  // auto-generated
         private unsafe void _HashData(byte[] partIn, int ibStart, int cbSize)
         {
+            TR.Enter();
             int bufferLen;
             int partInLen = cbSize;
             int partInBase = ibStart;
@@ -115,11 +126,13 @@ namespace Neo.Cryptography
                     }
                 }
             }
+            TR.Exit();
         }
 
         [SecurityCritical]  // auto-generated
         private byte[] _EndHash()
         {
+            TR.Enter();
             byte[] pad;
             int padLen;
             long bitCount;
@@ -154,12 +167,13 @@ namespace Neo.Cryptography
             /* Store digest */
             DWORDToLittleEndian(hash, _stateMD160, 5);
 
-            return hash;
+            return TR.Exit(hash);
         }
 
         [System.Security.SecurityCritical]  // auto-generated
         private static unsafe void MDTransform(uint* blockDWords, uint* state, byte* block)
         {
+            TR.Enter();
             uint aa = state[0];
             uint bb = state[1];
             uint cc = state[2];
@@ -998,46 +1012,55 @@ namespace Neo.Cryptography
             state[3] = state[4] + aa + bbb;
             state[4] = state[0] + bb + ccc;
             state[0] = ddd;
+            TR.Exit();
         }
 
         // The five basic functions
         private static uint F(uint x, uint y, uint z)
         {
-            return (x ^ y ^ z);
+            TR.Enter();
+            return TR.Exit((x ^ y ^ z));
         }
 
         private static uint G(uint x, uint y, uint z)
         {
-            return ((x & y) | (~x & z));
+            TR.Enter();
+            return TR.Exit(((x & y) | (~x & z)));
         }
 
         private static uint H(uint x, uint y, uint z)
         {
-            return ((x | ~y) ^ z);
+            TR.Enter();
+            return TR.Exit(((x | ~y) ^ z));
         }
 
         private static uint I(uint x, uint y, uint z)
         {
-            return ((x & z) | (y & ~z));
+            TR.Enter();
+            return TR.Exit(((x & z) | (y & ~z)));
         }
 
         private static uint J(uint x, uint y, uint z)
         {
-            return (x ^ (y | ~z));
+            TR.Enter();
+            return TR.Exit((x ^ (y | ~z)));
         }
 
         [SecurityCritical]  // auto-generated
         private unsafe static void DWORDFromLittleEndian(uint* x, int digits, byte* block)
         {
+            TR.Enter();
             int i;
             int j;
 
             for (i = 0, j = 0; i < digits; i++, j += 4)
                 x[i] = (uint)(block[j] | (block[j + 1] << 8) | (block[j + 2] << 16) | (block[j + 3] << 24));
+            TR.Exit();
         }
 
         private static void DWORDToLittleEndian(byte[] block, uint[] x, int digits)
         {
+            TR.Enter();
             int i;
             int j;
 
@@ -1048,6 +1071,7 @@ namespace Neo.Cryptography
                 block[j + 2] = (byte)((x[i] >> 16) & 0xff);
                 block[j + 3] = (byte)((x[i] >> 24) & 0xff);
             }
+            TR.Exit();
         }
     }
 }
