@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Security.Cryptography;
+using DbgViewTR;
 
 namespace Neo.Cryptography
 {
@@ -7,6 +8,7 @@ namespace Neo.Cryptography
     {
         private unsafe static void BulkCopy(void* dst, void* src, int len)
         {
+            TR.Enter();
             var d = (byte*)dst;
             var s = (byte*)src;
 
@@ -36,10 +38,12 @@ namespace Neo.Cryptography
             {
                 *d = *s;
             }
+            TR.Exit();
         }
 
         private unsafe static void BulkXor(void* dst, void* src, int len)
         {
+            TR.Enter();
             var d = (byte*)dst;
             var s = (byte*)src;
 
@@ -68,27 +72,32 @@ namespace Neo.Cryptography
             {
                 *d ^= *s;
             }
+            TR.Exit();
         }
 
         private unsafe static void Encode32(byte* p, uint x)
         {
+            TR.Enter();
             p[0] = (byte)(x & 0xff);
             p[1] = (byte)((x >> 8) & 0xff);
             p[2] = (byte)((x >> 16) & 0xff);
             p[3] = (byte)((x >> 24) & 0xff);
+            TR.Exit();
         }
 
         private unsafe static uint Decode32(byte* p)
         {
+            TR.Enter();
             return
-                ((uint)(p[0]) +
+                TR.Exit(((uint)(p[0]) +
                 ((uint)(p[1]) << 8) +
                 ((uint)(p[2]) << 16) +
-                ((uint)(p[3]) << 24));
+                ((uint)(p[3]) << 24)));
         }
 
         private unsafe static void Salsa208(uint* B)
         {
+            TR.Enter();
             uint x0 = B[0];
             uint x1 = B[1];
             uint x2 = B[2];
@@ -152,15 +161,18 @@ namespace Neo.Cryptography
             B[13] += x13;
             B[14] += x14;
             B[15] += x15;
+            TR.Exit();
         }
 
         private unsafe static uint R(uint a, int b)
         {
-            return (a << b) | (a >> (32 - b));
+            TR.Enter();
+            return TR.Exit((a << b) | (a >> (32 - b)));
         }
 
         private unsafe static void BlockMix(uint* Bin, uint* Bout, uint* X, int r)
         {
+            TR.Enter();
             /* 1: X <-- B_{2r - 1} */
             BulkCopy(X, &Bin[(2 * r - 1) * 16], 64);
 
@@ -183,17 +195,20 @@ namespace Neo.Cryptography
                 /* 6: B' <-- (Y_0, Y_2 ... Y_{2r-2}, Y_1, Y_3 ... Y_{2r-1}) */
                 BulkCopy(&Bout[i * 8 + r * 16], X, 64);
             }
+            TR.Exit();
         }
 
         private unsafe static long Integerify(uint* B, int r)
         {
+            TR.Enter();
             var X = (uint*)(((byte*)B) + (2 * r - 1) * 64);
 
-            return (((long)(X[1]) << 32) + X[0]);
+            return TR.Exit((((long)(X[1]) << 32) + X[0]));
         }
 
         private unsafe static void SMix(byte* B, int r, int N, uint* V, uint* XY)
         {
+            TR.Enter();
             var X = XY;
             var Y = &XY[32 * r];
             var Z = &XY[64 * r];
@@ -243,6 +258,7 @@ namespace Neo.Cryptography
             {
                 Encode32(&B[4 * k], X[k]);
             }
+            TR.Exit();
         }
 
 #if NET47
@@ -253,6 +269,7 @@ namespace Neo.Cryptography
 #else
         public unsafe static byte[] DeriveKey(byte[] password, byte[] salt, int N, int r, int p, int derivedKeyLength)
         {
+            TR.Enter();
             var Ba = new byte[128 * r * p + 63];
             var XYa = new byte[256 * r + 63];
             var Va = new byte[128 * r * N + 63];
@@ -278,14 +295,16 @@ namespace Neo.Cryptography
             /* 5: DK <-- PBKDF2(P, B, 1, dkLen) */
             PBKDF2_SHA256(mac, password, Ba, p * 128 * r, 1, buf, buf.Length);
 
-            return buf;
+            return TR.Exit(buf);
         }
 #endif
 
         private static void PBKDF2_SHA256(HMACSHA256 mac, byte[] password, byte[] salt, int saltLength, long iterationCount, byte[] derivedKey, int derivedKeyLength)
         {
+            TR.Enter();
             if (derivedKeyLength > (Math.Pow(2, 32) - 1) * 32)
             {
+                TR.Exit();
                 throw new ArgumentException("Requested key length too long");
             }
 
@@ -325,6 +344,7 @@ namespace Neo.Cryptography
                     Buffer.BlockCopy(T, 0, derivedKey, (i - 1) * 32, (i == blockCount ? r : 32));
                 }
             }
+            TR.Exit();
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Cryptography
 {
@@ -16,18 +17,21 @@ namespace Neo.Cryptography
 
         internal MerkleTree(UInt256[] hashes)
         {
+            TR.Enter();
             if (hashes.Length == 0) throw new ArgumentException();
             this.root = Build(hashes.Select(p => new MerkleTreeNode { Hash = p }).ToArray());
             int depth = 1;
             for (MerkleTreeNode i = root; i.LeftChild != null; i = i.LeftChild)
                 depth++;
             this.Depth = depth;
+            TR.Exit();
         }
 
         private static MerkleTreeNode Build(MerkleTreeNode[] leaves)
         {
+            TR.Enter();
             if (leaves.Length == 0) throw new ArgumentException();
-            if (leaves.Length == 1) return leaves[0];
+            if (leaves.Length == 1) return TR.Exit(leaves[0]);
             MerkleTreeNode[] parents = new MerkleTreeNode[(leaves.Length + 1) / 2];
             for (int i = 0; i < parents.Length; i++)
             {
@@ -45,7 +49,7 @@ namespace Neo.Cryptography
                 }
                 parents[i].Hash = new UInt256(Crypto.Default.Hash256(parents[i].LeftChild.Hash.ToArray().Concat(parents[i].RightChild.Hash.ToArray()).ToArray()));
             }
-            return Build(parents); //TailCall
+            return TR.Exit(Build(parents)); //TailCall
         }
 
         /// <summary>
@@ -55,14 +59,16 @@ namespace Neo.Cryptography
         /// <returns>返回计算的结果</returns>
         public static UInt256 ComputeRoot(UInt256[] hashes)
         {
+            TR.Enter();
             if (hashes.Length == 0) throw new ArgumentException();
-            if (hashes.Length == 1) return hashes[0];
+            if (hashes.Length == 1) return TR.Exit(hashes[0]);
             MerkleTree tree = new MerkleTree(hashes);
-            return tree.root.Hash;
+            return TR.Exit(tree.root.Hash);
         }
 
         private static void DepthFirstSearch(MerkleTreeNode node, IList<UInt256> hashes)
         {
+            TR.Enter();
             if (node.LeftChild == null)
             {
                 // if left is null, then right must be null
@@ -73,27 +79,40 @@ namespace Neo.Cryptography
                 DepthFirstSearch(node.LeftChild, hashes);
                 DepthFirstSearch(node.RightChild, hashes);
             }
+            TR.Exit();
         }
 
         // depth-first order
         public UInt256[] ToHashArray()
         {
+            TR.Enter();
             List<UInt256> hashes = new List<UInt256>();
             DepthFirstSearch(root, hashes);
-            return hashes.ToArray();
+            return TR.Exit(hashes.ToArray());
         }
 
         public void Trim(BitArray flags)
         {
+            TR.Enter();
             flags = new BitArray(flags);
             flags.Length = 1 << (Depth - 1);
             Trim(root, 0, Depth, flags);
+            TR.Exit();
         }
 
         private static void Trim(MerkleTreeNode node, int index, int depth, BitArray flags)
         {
-            if (depth == 1) return;
-            if (node.LeftChild == null) return; // if left is null, then right must be null
+            TR.Enter();
+            if (depth == 1)
+            {
+                TR.Exit();
+                return;
+            }
+            if (node.LeftChild == null)
+            {
+                TR.Exit();
+                return; // if left is null, then right must be null
+            } 
             if (depth == 2)
             {
                 if (!flags.Get(index * 2) && !flags.Get(index * 2 + 1))
@@ -112,6 +131,7 @@ namespace Neo.Cryptography
                     node.RightChild = null;
                 }
             }
+            TR.Exit();
         }
     }
 }
