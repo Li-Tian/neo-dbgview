@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -31,7 +32,9 @@ namespace Neo.Core
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version > 1) throw new FormatException();
+            TR.Exit();
         }
 
         /// <summary>
@@ -40,6 +43,7 @@ namespace Neo.Core
         /// <returns>返回需要校验的脚本散列值</returns>
         public override UInt160[] GetScriptHashesForVerifying()
         {
+            TR.Enter();
             HashSet<UInt160> hashes = new HashSet<UInt160>(base.GetScriptHashesForVerifying());
             foreach (TransactionResult result in GetTransactionResults().Where(p => p.Amount < Fixed8.Zero))
             {
@@ -47,7 +51,7 @@ namespace Neo.Core
                 if (asset == null) throw new InvalidOperationException();
                 hashes.Add(asset.Issuer);
             }
-            return hashes.OrderBy(p => p).ToArray();
+            return TR.Exit(hashes.OrderBy(p => p).ToArray());
         }
 
         /// <summary>
@@ -56,18 +60,19 @@ namespace Neo.Core
         /// <returns>返回验证后的结果</returns>
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
-            if (!base.Verify(mempool)) return false;
+            TR.Enter();
+            if (!base.Verify(mempool)) return TR.Exit(false);
             TransactionResult[] results = GetTransactionResults()?.Where(p => p.Amount < Fixed8.Zero).ToArray();
-            if (results == null) return false;
+            if (results == null) return TR.Exit(false);
             foreach (TransactionResult r in results)
             {
                 AssetState asset = Blockchain.Default.GetAssetState(r.AssetId);
-                if (asset == null) return false;
+                if (asset == null) return TR.Exit(false);
                 if (asset.Amount < Fixed8.Zero) continue;
                 Fixed8 quantity_issued = asset.Available + mempool.OfType<IssueTransaction>().Where(p => p != this).SelectMany(p => p.Outputs).Where(p => p.AssetId == r.AssetId).Sum(p => p.Value);
-                if (asset.Amount - quantity_issued < -r.Amount) return false;
+                if (asset.Amount - quantity_issued < -r.Amount) return TR.Exit(false);
             }
-            return true;
+            return TR.Exit(true);
         }
     }
 }

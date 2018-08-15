@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -128,7 +129,9 @@ namespace Neo.Core
         /// <param name="type">交易类型</param>
         protected Transaction(TransactionType type)
         {
+            TR.Enter();
             this.Type = type;
+            TR.Exit();
         }
 
         /// <summary>
@@ -137,9 +140,11 @@ namespace Neo.Core
         /// <param name="reader">数据来源</param>
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             ((IVerifiable)this).DeserializeUnsigned(reader);
             Scripts = reader.ReadSerializableArray<Witness>();
             OnDeserialized();
+            TR.Exit();
         }
 
         /// <summary>
@@ -158,10 +163,11 @@ namespace Neo.Core
         /// <returns>返回反序列化后的结果</returns>
         public static Transaction DeserializeFrom(byte[] value, int offset = 0)
         {
+            TR.Enter();
             using (MemoryStream ms = new MemoryStream(value, offset, value.Length - offset, false))
             using (BinaryReader reader = new BinaryReader(ms, Encoding.UTF8))
             {
-                return DeserializeFrom(reader);
+                return TR.Exit(DeserializeFrom(reader));
             }
         }
 
@@ -172,6 +178,7 @@ namespace Neo.Core
         /// <returns>返回反序列化后的结果</returns>
         internal static Transaction DeserializeFrom(BinaryReader reader)
         {
+            TR.Enter();
             // Looking for type in reflection cache
             Transaction transaction = ReflectionCache.CreateInstance<Transaction>(reader.ReadByte());
             if (transaction == null) throw new FormatException();
@@ -179,45 +186,53 @@ namespace Neo.Core
             transaction.DeserializeUnsignedWithoutType(reader);
             transaction.Scripts = reader.ReadSerializableArray<Witness>();
             transaction.OnDeserialized();
-            return transaction;
+            return TR.Exit(transaction);
         }
 
         void IVerifiable.DeserializeUnsigned(BinaryReader reader)
         {
+            TR.Enter();
             if ((TransactionType)reader.ReadByte() != Type)
                 throw new FormatException();
             DeserializeUnsignedWithoutType(reader);
+            TR.Exit();
         }
 
         private void DeserializeUnsignedWithoutType(BinaryReader reader)
         {
+            TR.Enter();
             Version = reader.ReadByte();
             DeserializeExclusiveData(reader);
             Attributes = reader.ReadSerializableArray<TransactionAttribute>(MaxTransactionAttributes);
             Inputs = reader.ReadSerializableArray<CoinReference>();
             Outputs = reader.ReadSerializableArray<TransactionOutput>(ushort.MaxValue + 1);
+            TR.Exit();
         }
 
         public bool Equals(Transaction other)
         {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            return Hash.Equals(other.Hash);
+            TR.Enter();
+            if (ReferenceEquals(null, other)) return TR.Exit(false);
+            if (ReferenceEquals(this, other)) return TR.Exit(true);
+            return TR.Exit(Hash.Equals(other.Hash));
         }
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as Transaction);
+            TR.Enter();
+            return TR.Exit(Equals(obj as Transaction));
         }
 
         public override int GetHashCode()
         {
-            return Hash.GetHashCode();
+            TR.Enter();
+            return TR.Exit(Hash.GetHashCode());
         }
 
         byte[] IScriptContainer.GetMessage()
         {
-            return this.GetHashData();
+            TR.Enter();
+            return TR.Exit(this.GetHashData());
         }
 
         /// <summary>
@@ -226,6 +241,7 @@ namespace Neo.Core
         /// <returns>返回需要校验的脚本散列值</returns>
         public virtual UInt160[] GetScriptHashesForVerifying()
         {
+            TR.Enter();
             if (References == null) throw new InvalidOperationException();
             HashSet<UInt160> hashes = new HashSet<UInt160>(Inputs.Select(p => References[p].ScriptHash));
             hashes.UnionWith(Attributes.Where(p => p.Usage == TransactionAttributeUsage.Script).Select(p => new UInt160(p.Data)));
@@ -238,7 +254,7 @@ namespace Neo.Core
                     hashes.UnionWith(group.Select(p => p.ScriptHash));
                 }
             }
-            return hashes.OrderBy(p => p).ToArray();
+            return TR.Exit(hashes.OrderBy(p => p).ToArray());
         }
 
         /// <summary>
@@ -247,8 +263,13 @@ namespace Neo.Core
         /// <returns>返回交易后各资产的变化量</returns>
         public IEnumerable<TransactionResult> GetTransactionResults()
         {
-            if (References == null) return null;
-            return References.Values.Select(p => new
+            TR.Enter();
+            if (References == null)
+            {
+                TR.Exit();
+                return null;
+            } 
+            return TR.Exit(References.Values.Select(p => new
             {
                 AssetId = p.AssetId,
                 Value = p.Value
@@ -260,7 +281,7 @@ namespace Neo.Core
             {
                 AssetId = k,
                 Amount = g.Sum(p => p.Value)
-            }).Where(p => p.Amount != Fixed8.Zero);
+            }).Where(p => p.Amount != Fixed8.Zero));
         }
 
         /// <summary>
@@ -276,8 +297,10 @@ namespace Neo.Core
         /// <param name="writer">存放序列化后的结果</param>
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             ((IVerifiable)this).SerializeUnsigned(writer);
             writer.Write(Scripts);
+            TR.Exit();
         }
 
         /// <summary>
@@ -290,12 +313,14 @@ namespace Neo.Core
 
         void IVerifiable.SerializeUnsigned(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write((byte)Type);
             writer.Write(Version);
             SerializeExclusiveData(writer);
             writer.Write(Attributes);
             writer.Write(Inputs);
             writer.Write(Outputs);
+            TR.Exit();
         }
 
         /// <summary>
@@ -304,6 +329,7 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public virtual JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["txid"] = Hash.ToString();
             json["size"] = Size;
@@ -315,12 +341,13 @@ namespace Neo.Core
             json["sys_fee"] = SystemFee.ToString();
             json["net_fee"] = NetworkFee.ToString();
             json["scripts"] = Scripts.Select(p => p.ToJson()).ToArray();
-            return json;
+            return TR.Exit(json);
         }
 
         bool IInventory.Verify()
         {
-            return Verify(Enumerable.Empty<Transaction>());
+            TR.Enter();
+            return TR.Exit(Verify(Enumerable.Empty<Transaction>()));
         }
 
         /// <summary>
@@ -329,52 +356,53 @@ namespace Neo.Core
         /// <returns>返回验证的结果</returns>
         public virtual bool Verify(IEnumerable<Transaction> mempool)
         {
+            TR.Enter();
             for (int i = 1; i < Inputs.Length; i++)
                 for (int j = 0; j < i; j++)
                     if (Inputs[i].PrevHash == Inputs[j].PrevHash && Inputs[i].PrevIndex == Inputs[j].PrevIndex)
-                        return false;
+                        return TR.Exit(false);
             if (mempool.Where(p => p != this).SelectMany(p => p.Inputs).Intersect(Inputs).Count() > 0)
-                return false;
+                return TR.Exit(false);
             if (Blockchain.Default.IsDoubleSpend(this))
-                return false;
+                return TR.Exit(false);
             foreach (var group in Outputs.GroupBy(p => p.AssetId))
             {
                 AssetState asset = Blockchain.Default.GetAssetState(group.Key);
-                if (asset == null) return false;
+                if (asset == null) return TR.Exit(false);
                 if (asset.Expiration <= Blockchain.Default.Height + 1 && asset.AssetType != AssetType.GoverningToken && asset.AssetType != AssetType.UtilityToken)
-                    return false;
+                    return TR.Exit(false);
                 foreach (TransactionOutput output in group)
                     if (output.Value.GetData() % (long)Math.Pow(10, 8 - asset.Precision) != 0)
-                        return false;
+                        return TR.Exit(false);
             }
             TransactionResult[] results = GetTransactionResults()?.ToArray();
-            if (results == null) return false;
+            if (results == null) return TR.Exit(false);
             TransactionResult[] results_destroy = results.Where(p => p.Amount > Fixed8.Zero).ToArray();
-            if (results_destroy.Length > 1) return false;
+            if (results_destroy.Length > 1) return TR.Exit(false);
             if (results_destroy.Length == 1 && results_destroy[0].AssetId != Blockchain.UtilityToken.Hash)
-                return false;
+                return TR.Exit(false);
             if (SystemFee > Fixed8.Zero && (results_destroy.Length == 0 || results_destroy[0].Amount < SystemFee))
-                return false;
+                return TR.Exit(false);
             TransactionResult[] results_issue = results.Where(p => p.Amount < Fixed8.Zero).ToArray();
             switch (Type)
             {
                 case TransactionType.MinerTransaction:
                 case TransactionType.ClaimTransaction:
                     if (results_issue.Any(p => p.AssetId != Blockchain.UtilityToken.Hash))
-                        return false;
+                        return TR.Exit(false);
                     break;
                 case TransactionType.IssueTransaction:
                     if (results_issue.Any(p => p.AssetId == Blockchain.UtilityToken.Hash))
-                        return false;
+                        return TR.Exit(false);
                     break;
                 default:
                     if (results_issue.Length > 0)
-                        return false;
+                        return TR.Exit(false);
                     break;
             }
             if (Attributes.Count(p => p.Usage == TransactionAttributeUsage.ECDH02 || p.Usage == TransactionAttributeUsage.ECDH03) > 1)
-                return false;
-            return this.VerifyScripts();
+                return TR.Exit(false);
+            return TR.Exit(this.VerifyScripts());
         }
     }
 }

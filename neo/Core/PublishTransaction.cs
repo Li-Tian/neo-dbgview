@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -43,6 +44,7 @@ namespace Neo.Core
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version > 1) throw new FormatException();
             Script = reader.ReadVarBytes();
             ParameterList = reader.ReadVarBytes().Select(p => (ContractParameterType)p).ToArray();
@@ -56,10 +58,12 @@ namespace Neo.Core
             Author = reader.ReadVarString(252);
             Email = reader.ReadVarString(252);
             Description = reader.ReadVarString(65536);
+            TR.Exit();
         }
 
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
+            TR.Enter();
             writer.WriteVarBytes(Script);
             writer.WriteVarBytes(ParameterList.Cast<byte>().ToArray());
             writer.Write((byte)ReturnType);
@@ -69,10 +73,12 @@ namespace Neo.Core
             writer.WriteVarString(Author);
             writer.WriteVarString(Email);
             writer.WriteVarString(Description);
+            TR.Exit();
         }
 
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["contract"] = new JObject();
             json["contract"]["code"] = new JObject();
@@ -86,12 +92,13 @@ namespace Neo.Core
             json["contract"]["author"] = Author;
             json["contract"]["email"] = Email;
             json["contract"]["description"] = Description;
-            return json;
+            return TR.Exit(json);
         }
 
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
-            return false;
+            TR.Enter();
+            return TR.Exit(false);
         }
     }
 }

@@ -169,9 +169,9 @@ namespace Neo.SmartContract
             switch (Value)
             {
                 case null:
-                    return "(null)";
+                    return TR.Exit("(null)");
                 case byte[] data:
-                    return data.ToHexString();
+                    return TR.Exit(data.ToHexString());
                 case IList<ContractParameter> data:
                     StringBuilder sb = new StringBuilder();
                     sb.Append('[');
@@ -187,7 +187,6 @@ namespace Neo.SmartContract
                 default:
                     return TR.Exit(Value.ToString());
             }
-            TR.Exit();
         }
     }
 }

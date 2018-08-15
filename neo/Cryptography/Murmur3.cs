@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using DbgViewTR;
 
 namespace Neo.Cryptography
 {
@@ -21,12 +22,15 @@ namespace Neo.Cryptography
 
         public Murmur3(uint seed)
         {
+            TR.Enter();
             this.seed = seed;
             Initialize();
+            TR.Exit();
         }
 
         protected override void HashCore(byte[] array, int ibStart, int cbSize)
         {
+            TR.Enter();
             length += cbSize;
             int remainder = cbSize & 3;
             int alignedLength = ibStart + (cbSize - remainder);
@@ -54,29 +58,34 @@ namespace Neo.Cryptography
                 remainingBytes *= c2;
                 hash ^= remainingBytes;
             }
+            TR.Exit();
         }
 
         protected override byte[] HashFinal()
         {
+            TR.Enter();
             hash ^= (uint)length;
             hash ^= hash >> 16;
             hash *= 0x85ebca6b;
             hash ^= hash >> 13;
             hash *= 0xc2b2ae35;
             hash ^= hash >> 16;
-            return BitConverter.GetBytes(hash);
+            return TR.Exit(BitConverter.GetBytes(hash));
         }
 
         public override void Initialize()
         {
+            TR.Enter();
             hash = seed;
             length = 0;
+            TR.Exit();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint RotateLeft(uint x, byte n)
         {
-            return (x << n) | (x >> (32 - n));
+            TR.Enter();
+            return TR.Exit((x << n) | (x >> (32 - n)));
         }
     }
 }

@@ -4,6 +4,7 @@ using Neo.VM;
 using Neo.Wallets;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -29,17 +30,21 @@ namespace Neo.Core
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             this.AssetId = reader.ReadSerializable<UInt256>();
             this.Value = reader.ReadSerializable<Fixed8>();
             if (Value <= Fixed8.Zero) throw new FormatException();
             this.ScriptHash = reader.ReadSerializable<UInt160>();
+            TR.Exit();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(AssetId);
             writer.Write(Value);
             writer.Write(ScriptHash);
+            TR.Exit();
         }
 
         /// <summary>
@@ -49,12 +54,13 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public JObject ToJson(ushort index)
         {
+            TR.Enter();
             JObject json = new JObject();
             json["n"] = index;
             json["asset"] = AssetId.ToString();
             json["value"] = Value.ToString();
             json["address"] = Wallet.ToAddress(ScriptHash);
-            return json;
+            return TR.Exit(json);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -15,7 +16,9 @@ namespace Neo.Core
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version != 0) throw new FormatException();
+            TR.Exit();
         }
     }
 }

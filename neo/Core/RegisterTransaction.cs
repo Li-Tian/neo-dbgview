@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -63,6 +64,7 @@ namespace Neo.Core
         /// <param name="reader">数据来源</param>
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version != 0) throw new FormatException();
             AssetType = (AssetType)reader.ReadByte();
             Name = reader.ReadVarString(1024);
@@ -72,6 +74,7 @@ namespace Neo.Core
             if (Owner.IsInfinity && AssetType != AssetType.GoverningToken && AssetType != AssetType.UtilityToken)
                 throw new FormatException();
             Admin = reader.ReadSerializable<UInt160>();
+            TR.Exit();
         }
 
         /// <summary>
@@ -80,17 +83,20 @@ namespace Neo.Core
         /// <returns>返回需要校验的脚本Hash值</returns>
         public override UInt160[] GetScriptHashesForVerifying()
         {
+            TR.Enter();
             UInt160 owner = Contract.CreateSignatureRedeemScript(Owner).ToScriptHash();
-            return base.GetScriptHashesForVerifying().Union(new[] { owner }).OrderBy(p => p).ToArray();
+            return TR.Exit(base.GetScriptHashesForVerifying().Union(new[] { owner }).OrderBy(p => p).ToArray());
         }
 
         protected override void OnDeserialized()
         {
+            TR.Enter();
             base.OnDeserialized();
             if (AssetType == AssetType.GoverningToken && !Hash.Equals(Blockchain.GoverningToken.Hash))
                 throw new FormatException();
             if (AssetType == AssetType.UtilityToken && !Hash.Equals(Blockchain.UtilityToken.Hash))
                 throw new FormatException();
+            TR.Exit();
         }
 
         /// <summary>
@@ -99,12 +105,14 @@ namespace Neo.Core
         /// <param name="writer">存放序列化后的结果</param>
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write((byte)AssetType);
             writer.WriteVarString(Name);
             writer.Write(Amount);
             writer.Write(Precision);
             writer.Write(Owner);
             writer.Write(Admin);
+            TR.Exit();
         }
 
         /// <summary>
@@ -113,6 +121,7 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["asset"] = new JObject();
             json["asset"]["type"] = AssetType;
@@ -128,12 +137,13 @@ namespace Neo.Core
             json["asset"]["precision"] = Precision;
             json["asset"]["owner"] = Owner.ToString();
             json["asset"]["admin"] = Wallet.ToAddress(Admin);
-            return json;
+            return TR.Exit(json);
         }
 
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
-            return false;
+            TR.Enter();
+            return TR.Exit(false);
         }
     }
 }

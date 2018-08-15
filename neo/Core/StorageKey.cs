@@ -3,6 +3,7 @@ using Neo.IO;
 using System;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -15,35 +16,42 @@ namespace Neo.Core
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             ScriptHash = reader.ReadSerializable<UInt160>();
             Key = reader.ReadBytesWithGrouping();
+            TR.Exit();
         }
 
         public bool Equals(StorageKey other)
         {
+            TR.Enter();
             if (ReferenceEquals(other, null))
-                return false;
+                return TR.Exit(false);
             if (ReferenceEquals(this, other))
-                return true;
-            return ScriptHash.Equals(other.ScriptHash) && Key.SequenceEqual(other.Key);
+                return TR.Exit(true);
+            return TR.Exit(ScriptHash.Equals(other.ScriptHash) && Key.SequenceEqual(other.Key));
         }
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(obj, null)) return false;
-            if (!(obj is StorageKey)) return false;
-            return Equals((StorageKey)obj);
+            TR.Enter();
+            if (ReferenceEquals(obj, null)) return TR.Exit(false);
+            if (!(obj is StorageKey)) return TR.Exit(false);
+            return TR.Exit(Equals((StorageKey)obj));
         }
 
         public override int GetHashCode()
         {
-            return ScriptHash.GetHashCode() + (int)Key.Murmur32(0);
+            TR.Enter();
+            return TR.Exit(ScriptHash.GetHashCode() + (int)Key.Murmur32(0));
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(ScriptHash);
             writer.WriteBytesWithGrouping(Key);
+            TR.Exit();
         }
     }
 }

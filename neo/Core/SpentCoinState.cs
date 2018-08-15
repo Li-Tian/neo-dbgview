@@ -1,6 +1,7 @@
 ﻿using Neo.IO;
 using System.Collections.Generic;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -15,16 +16,18 @@ namespace Neo.Core
 
         SpentCoinState ICloneable<SpentCoinState>.Clone()
         {
-            return new SpentCoinState
+            TR.Enter();
+            return TR.Exit(new SpentCoinState
             {
                 TransactionHash = TransactionHash,
                 TransactionHeight = TransactionHeight,
                 Items = new Dictionary<ushort, uint>(Items)
-            };
+            });
         }
 
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             base.Deserialize(reader);
             TransactionHash = reader.ReadSerializable<UInt256>();
             TransactionHeight = reader.ReadUInt32();
@@ -36,17 +39,21 @@ namespace Neo.Core
                 uint height = reader.ReadUInt32();
                 Items.Add(index, height);
             }
+            TR.Exit();
         }
 
         void ICloneable<SpentCoinState>.FromReplica(SpentCoinState replica)
         {
+            TR.Enter();
             TransactionHash = replica.TransactionHash;
             TransactionHeight = replica.TransactionHeight;
             Items = replica.Items;
+            TR.Exit();
         }
 
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             base.Serialize(writer);
             writer.Write(TransactionHash);
             writer.Write(TransactionHeight);
@@ -56,6 +63,7 @@ namespace Neo.Core
                 writer.Write(pair.Key);
                 writer.Write(pair.Value);
             }
+            TR.Exit();
         }
     }
 }

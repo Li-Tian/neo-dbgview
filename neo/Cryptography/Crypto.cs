@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Security.Cryptography;
+using DbgViewTR;
 
 namespace Neo.Cryptography
 {
@@ -11,16 +12,19 @@ namespace Neo.Cryptography
 
         public byte[] Hash160(byte[] message)
         {
-            return message.Sha256().RIPEMD160();
+            TR.Enter();
+            return TR.Exit(message.Sha256().RIPEMD160());
         }
 
         public byte[] Hash256(byte[] message)
         {
-            return message.Sha256().Sha256();
+            TR.Enter();
+            return TR.Exit(message.Sha256().Sha256());
         }
 
         public byte[] Sign(byte[] message, byte[] prikey, byte[] pubkey)
         {
+            TR.Enter();
             using (var ecdsa = ECDsa.Create(new ECParameters
             {
                 Curve = ECCurve.NamedCurves.nistP256,
@@ -32,12 +36,13 @@ namespace Neo.Cryptography
                 }
             }))
             {
-                return ecdsa.SignData(message, HashAlgorithmName.SHA256);
+                return TR.Exit(ecdsa.SignData(message, HashAlgorithmName.SHA256));
             }
         }
 
         public bool VerifySignature(byte[] message, byte[] signature, byte[] pubkey)
         {
+            TR.Enter();
             if (pubkey.Length == 33 && (pubkey[0] == 0x02 || pubkey[0] == 0x03))
             {
                 try
@@ -46,7 +51,7 @@ namespace Neo.Cryptography
                 }
                 catch
                 {
-                    return false;
+                    return TR.Exit(false);
                 }
             }
             else if (pubkey.Length == 65 && pubkey[0] == 0x04)
@@ -67,7 +72,7 @@ namespace Neo.Cryptography
                 }
             }))
             {
-                return ecdsa.VerifyData(message, signature, HashAlgorithmName.SHA256);
+                return TR.Exit(ecdsa.VerifyData(message, signature, HashAlgorithmName.SHA256));
             }
         }
     }
