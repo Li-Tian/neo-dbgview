@@ -4,6 +4,7 @@ using Neo.VM;
 using System;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -38,6 +39,7 @@ namespace Neo.Core
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             Usage = (TransactionAttributeUsage)reader.ReadByte();
             if (Usage == TransactionAttributeUsage.ContractHash || Usage == TransactionAttributeUsage.Vote || (Usage >= TransactionAttributeUsage.Hash1 && Usage <= TransactionAttributeUsage.Hash15))
                 Data = reader.ReadBytes(32);
@@ -51,10 +53,12 @@ namespace Neo.Core
                 Data = reader.ReadVarBytes(ushort.MaxValue);
             else
                 throw new FormatException();
+            TR.Exit();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write((byte)Usage);
             if (Usage == TransactionAttributeUsage.DescriptionUrl)
                 writer.Write((byte)Data.Length);
@@ -64,6 +68,7 @@ namespace Neo.Core
                 writer.Write(Data, 1, 32);
             else
                 writer.Write(Data);
+            TR.Exit();
         }
 
         /// <summary>
@@ -72,10 +77,11 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["usage"] = Usage;
             json["data"] = Data.ToHexString();
-            return json;
+            return TR.Exit(json);
         }
     }
 }
