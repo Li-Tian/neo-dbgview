@@ -3,6 +3,7 @@ using Neo.IO.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -22,6 +23,7 @@ namespace Neo.Core
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             if (Version > 1) throw new FormatException();
             Script = reader.ReadVarBytes(65536);
             if (Script.Length == 0) throw new FormatException();
@@ -34,34 +36,40 @@ namespace Neo.Core
             {
                 Gas = Fixed8.Zero;
             }
+            TR.Exit();
         }
 
         public static Fixed8 GetGas(Fixed8 consumed)
         {
+            TR.Enter();
             Fixed8 gas = consumed - Fixed8.FromDecimal(10);
-            if (gas <= Fixed8.Zero) return Fixed8.Zero;
-            return gas.Ceiling();
+            if (gas <= Fixed8.Zero) return TR.Exit(Fixed8.Zero);
+            return TR.Exit(gas.Ceiling());
         }
 
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
+            TR.Enter();
             writer.WriteVarBytes(Script);
             if (Version >= 1)
                 writer.Write(Gas);
+            TR.Exit();
         }
 
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["script"] = Script.ToHexString();
             json["gas"] = Gas.ToString();
-            return json;
+            return TR.Exit(json);
         }
 
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
-            if (Gas.GetData() % 100000000 != 0) return false;
-            return base.Verify(mempool);
+            TR.Enter();
+            if (Gas.GetData() % 100000000 != 0) return TR.Exit(false);
+            return TR.Exit(base.Verify(mempool));
         }
     }
 }
