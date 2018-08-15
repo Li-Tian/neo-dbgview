@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -23,11 +24,14 @@ namespace Neo.Core
 
         protected override void DeserializeExclusiveData(BinaryReader reader)
         {
+            TR.Enter();
             Descriptors = reader.ReadSerializableArray<StateDescriptor>(16);
+            TR.Exit();
         }
 
         public override UInt160[] GetScriptHashesForVerifying()
         {
+            TR.Enter();
             HashSet<UInt160> hashes = new HashSet<UInt160>(base.GetScriptHashesForVerifying());
             foreach (StateDescriptor descriptor in Descriptors)
             {
@@ -43,15 +47,16 @@ namespace Neo.Core
                         throw new InvalidOperationException();
                 }
             }
-            return hashes.OrderBy(p => p).ToArray();
+            return TR.Exit(hashes.OrderBy(p => p).ToArray());
         }
 
         private IEnumerable<UInt160> GetScriptHashesForVerifying_Account(StateDescriptor descriptor)
         {
+            TR.Enter();
             switch (descriptor.Field)
             {
                 case "Votes":
-                    yield return new UInt160(descriptor.Key);
+                    yield return TR.Exit(new UInt160(descriptor.Key));
                     break;
                 default:
                     throw new InvalidOperationException();
@@ -60,10 +65,11 @@ namespace Neo.Core
 
         private IEnumerable<UInt160> GetScriptHashesForVerifying_Validator(StateDescriptor descriptor)
         {
+            TR.Enter();
             switch (descriptor.Field)
             {
                 case "Registered":
-                    yield return Contract.CreateSignatureRedeemScript(ECPoint.DecodePoint(descriptor.Key, ECCurve.Secp256r1)).ToScriptHash();
+                    yield return TR.Exit(Contract.CreateSignatureRedeemScript(ECPoint.DecodePoint(descriptor.Key, ECCurve.Secp256r1)).ToScriptHash());
                     break;
                 default:
                     throw new InvalidOperationException();
@@ -72,22 +78,26 @@ namespace Neo.Core
 
         protected override void SerializeExclusiveData(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(Descriptors);
+            TR.Exit();
         }
 
         public override JObject ToJson()
         {
+            TR.Enter();
             JObject json = base.ToJson();
             json["descriptors"] = new JArray(Descriptors.Select(p => p.ToJson()));
-            return json;
+            return TR.Exit(json);
         }
 
         public override bool Verify(IEnumerable<Transaction> mempool)
         {
+            TR.Enter();
             foreach (StateDescriptor descriptor in Descriptors)
                 if (!descriptor.Verify())
-                    return false;
-            return base.Verify(mempool);
+                    return TR.Exit(false);
+            return TR.Exit(base.Verify(mempool));
         }
     }
 }
