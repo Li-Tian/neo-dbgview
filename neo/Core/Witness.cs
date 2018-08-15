@@ -1,6 +1,7 @@
 ﻿using Neo.IO;
 using Neo.IO.Json;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Core
 {
@@ -26,14 +27,18 @@ namespace Neo.Core
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             InvocationScript = reader.ReadVarBytes(65536);
             VerificationScript = reader.ReadVarBytes(65536);
+            TR.Exit();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.WriteVarBytes(InvocationScript);
             writer.WriteVarBytes(VerificationScript);
+            TR.Exit();
         }
 
         /// <summary>
@@ -42,10 +47,11 @@ namespace Neo.Core
         /// <returns>返回json对象</returns>
         public JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["invocation"] = InvocationScript.ToHexString();
             json["verification"] = VerificationScript.ToHexString();
-            return json;
+            return TR.Exit(json);
         }
     }
 }
