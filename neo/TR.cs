@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -281,6 +282,11 @@ namespace DbgViewTR
 #if DEBUG
         private static void Log(DbgData dd, string format, params object[] args)
         {
+            var ignoreFiles = GetIgnoreFileSet();
+            if (ignoreFiles.Contains(dd.file_name?.ToLower()))
+            {
+                return;
+            }
             IndentKey ik = dd.GetIndentKey();
             IndentContext iu = IndentManager.GetInstance().Get(ik);
             if (format == "<")
@@ -311,6 +317,73 @@ namespace DbgViewTR
                 iu.Indent();
             }
         }
+
+        private static HashSet<string> ignoreFiles = null;
+        private static readonly Object locker = new Object();
+
+        private static HashSet<string> GetIgnoreFileSet()
+        {
+            if (ignoreFiles == null)
+            {
+                lock (locker)
+                {
+                    if (ignoreFiles == null)
+                    {
+                        ignoreFiles = new HashSet<string>();
+                        try
+                        {
+                            IConfigurationSection section = new ConfigurationBuilder().AddJsonFile("dbgview_setting.json").Build().GetSection("DbgViewSetting");
+                            ignoreFiles.UnionWith(section.GetSection("IgnoreFiles").GetChildren().Select(p => p.Value.ToLower()).ToList());
+                            Debug.Print("[{0}] Ignore files loaded : {1}", project_key, ignoreFiles.Count);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.Print("[{0}] Exception : {1}", project_key, e.Message);
+                        }
+                    }
+                }
+            }
+            return ignoreFiles;
+        }
 #endif
+    }
+}
+
+namespace NoDbgViewTR
+{
+    public class IndentContext
+    {
+    }
+
+    class TR
+    {
+        public static IndentContext SaveContextAndShuffle()
+        {
+            return null;
+        }
+        public static void RestoreContext(IndentContext iu)
+        {
+        }
+        public static void Enter()
+        {
+
+        }
+        public static void Exit()
+        {
+        }
+        public static T Exit<T>(T result)
+        {
+            return result;
+        }
+        public static void Log(string format, params object[] args)
+        {
+        }
+        public static void Log()
+        {
+        }
+        public static T Log<T>(T obj)
+        {
+            return obj;
+        }
     }
 }

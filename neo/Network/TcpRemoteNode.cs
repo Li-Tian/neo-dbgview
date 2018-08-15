@@ -40,19 +40,17 @@ namespace Neo.Network
             IPAddress address = ListenerEndpoint.Address;
             if (address.IsIPv4MappedToIPv6)
                 address = address.MapToIPv4();
+            IndentContext ic = TR.SaveContextAndShuffle();
             try
             {
                 TR.Log(ListenerEndpoint.ToString());
-                IndentContext ic = TR.SaveContextAndShuffle();
                 await socket.ConnectAsync(address, ListenerEndpoint.Port);
                 TR.RestoreContext(ic);
-                TR.Log();
                 OnConnected();
-                TR.Log();
             }
             catch (SocketException)
             {
-                TR.Log();
+                TR.RestoreContext(ic);
                 Disconnect(false);
                 return TR.Exit(false);
             }
