@@ -397,7 +397,7 @@ namespace Neo.Wallets
 
         public bool Sign(ContractParametersContext context)
         {
-                        TR.Enter();
+            TR.Enter();
             bool fSuccess = false;
             foreach (UInt160 scriptHash in context.ScriptHashes)
             {

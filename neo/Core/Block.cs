@@ -1,5 +1,4 @@
-﻿using DbgViewTR;
-using Neo.Cryptography;
+﻿using Neo.Cryptography;
 using Neo.IO;
 using Neo.IO.Json;
 using Neo.Network;
@@ -7,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Core
 {
