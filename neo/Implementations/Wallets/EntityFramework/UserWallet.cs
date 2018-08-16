@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security;
 using System.Security.Cryptography;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {
@@ -43,6 +44,7 @@ namespace Neo.Implementations.Wallets.EntityFramework
 
         private UserWallet(string path, byte[] passwordKey, bool create)
         {
+            TR.Enter();
             this.path = path;
             if (create)
             {
@@ -68,7 +70,10 @@ namespace Neo.Implementations.Wallets.EntityFramework
             {
                 byte[] passwordHash = LoadStoredData("PasswordHash");
                 if (passwordHash != null && !passwordHash.SequenceEqual(passwordKey.Sha256()))
+                {
+                    TR.Exit();
                     throw new CryptographicException();
+                }
                 this.iv = LoadStoredData("IV");
                 this.masterKey = LoadStoredData("MasterKey").AesDecrypt(passwordKey, iv);
 #if NET47
@@ -78,10 +83,12 @@ namespace Neo.Implementations.Wallets.EntityFramework
                 WalletIndexer.RegisterAccounts(accounts.Keys);
             }
             WalletIndexer.BalanceChanged += WalletIndexer_BalanceChanged;
+            TR.Exit();
         }
 
         private void AddAccount(UserWalletAccount account, bool is_import)
         {
+            TR.Enter();
             lock (accounts)
             {
                 if (accounts.TryGetValue(account.ScriptHash, out UserWalletAccount account_old))
@@ -153,10 +160,12 @@ namespace Neo.Implementations.Wallets.EntityFramework
                 }
                 ctx.SaveChanges();
             }
+            TR.Exit();
         }
 
         public override void ApplyTransaction(Transaction tx)
         {
+            TR.Enter();
             lock (unconfirmed)
             {
                 unconfirmed[tx.Hash] = tx;
@@ -168,20 +177,24 @@ namespace Neo.Implementations.Wallets.EntityFramework
                 Height = null,
                 Time = DateTime.UtcNow.ToTimestamp()
             });
+            TR.Exit();
         }
 
         private void BuildDatabase()
         {
+            TR.Enter();
             using (WalletDataContext ctx = new WalletDataContext(path))
             {
                 ctx.Database.EnsureDeleted();
                 ctx.Database.EnsureCreated();
             }
+            TR.Exit();
         }
 
         public bool ChangePassword(string password_old, string password_new)
         {
-            if (!VerifyPassword(password_old)) return false;
+            TR.Enter();
+            if (!VerifyPassword(password_old)) return TR.Exit(false);
             byte[] passwordKey = password_new.ToAesKey();
 #if NET47
             using (new ProtectedMemoryContext(masterKey, MemoryProtectionScope.SameProcess))
@@ -191,7 +204,7 @@ namespace Neo.Implementations.Wallets.EntityFramework
                 {
                     SaveStoredData("PasswordHash", passwordKey.Sha256());
                     SaveStoredData("MasterKey", masterKey.AesEncrypt(passwordKey, iv));
-                    return true;
+                    return TR.Exit(true);
                 }
                 finally
                 {
@@ -202,24 +215,28 @@ namespace Neo.Implementations.Wallets.EntityFramework
 
         public override bool Contains(UInt160 scriptHash)
         {
+            TR.Enter();
             lock (accounts)
             {
-                return accounts.ContainsKey(scriptHash);
+                return TR.Exit(accounts.ContainsKey(scriptHash));
             }
         }
 
         public static UserWallet Create(string path, string password)
         {
-            return new UserWallet(path, password.ToAesKey(), true);
+            TR.Enter();
+            return TR.Exit(new UserWallet(path, password.ToAesKey(), true));
         }
 
         public static UserWallet Create(string path, SecureString password)
         {
-            return new UserWallet(path, password.ToAesKey(), true);
+            TR.Enter();
+            return TR.Exit(new UserWallet(path, password.ToAesKey(), true));
         }
 
         public override WalletAccount CreateAccount(byte[] privateKey)
         {
+            TR.Enter();
             KeyPair key = new KeyPair(privateKey);
             VerificationContract contract = new VerificationContract
             {
@@ -232,11 +249,12 @@ namespace Neo.Implementations.Wallets.EntityFramework
                 Contract = contract
             };
             AddAccount(account, false);
-            return account;
+            return TR.Exit(account);
         }
 
         public override WalletAccount CreateAccount(SmartContract.Contract contract, KeyPair key = null)
         {
+            TR.Enter();
             VerificationContract verification_contract = contract as VerificationContract;
             if (verification_contract == null)
             {
@@ -252,30 +270,41 @@ namespace Neo.Implementations.Wallets.EntityFramework
                 Contract = verification_contract
             };
             AddAccount(account, false);
-            return account;
+            return TR.Exit(account);
         }
 
         public override WalletAccount CreateAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             UserWalletAccount account = new UserWalletAccount(scriptHash);
             AddAccount(account, true);
-            return account;
+            return TR.Exit(account);
         }
 
         private byte[] DecryptPrivateKey(byte[] encryptedPrivateKey)
         {
-            if (encryptedPrivateKey == null) throw new ArgumentNullException(nameof(encryptedPrivateKey));
-            if (encryptedPrivateKey.Length != 96) throw new ArgumentException();
+            TR.Enter();
+            if (encryptedPrivateKey == null)
+            {
+                TR.Exit();
+                throw new ArgumentNullException(nameof(encryptedPrivateKey));
+            }
+            if (encryptedPrivateKey.Length != 96)
+            {
+                TR.Exit();
+                throw new ArgumentException();
+            }
 #if NET47
             using (new ProtectedMemoryContext(masterKey, MemoryProtectionScope.SameProcess))
 #endif
             {
-                return encryptedPrivateKey.AesDecrypt(masterKey, iv);
+                return TR.Exit(encryptedPrivateKey.AesDecrypt(masterKey, iv));
             }
         }
 
         public override bool DeleteAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             UserWalletAccount account;
             lock (accounts)
             {
@@ -304,55 +333,62 @@ namespace Neo.Implementations.Wallets.EntityFramework
                     }
                     ctx.SaveChanges();
                 }
-                return true;
+                return TR.Exit(true);
             }
-            return false;
+            return TR.Exit(false);
         }
 
         public void Dispose()
         {
+            TR.Enter();
             WalletIndexer.BalanceChanged -= WalletIndexer_BalanceChanged;
+            TR.Exit();
         }
 
         private byte[] EncryptPrivateKey(byte[] decryptedPrivateKey)
         {
+            TR.Enter();
 #if NET47
             using (new ProtectedMemoryContext(masterKey, MemoryProtectionScope.SameProcess))
 #endif
             {
-                return decryptedPrivateKey.AesEncrypt(masterKey, iv);
+                return TR.Exit(decryptedPrivateKey.AesEncrypt(masterKey, iv));
             }
         }
 
         public override Coin[] FindUnspentCoins(UInt256 asset_id, Fixed8 amount, UInt160[] from)
         {
-            return FindUnspentCoins(FindUnspentCoins(from).ToArray().Where(p => GetAccount(p.Output.ScriptHash).Contract.IsStandard), asset_id, amount) ?? base.FindUnspentCoins(asset_id, amount, from);
+            TR.Enter();
+            return TR.Exit(FindUnspentCoins(FindUnspentCoins(from).ToArray().Where(p => GetAccount(p.Output.ScriptHash).Contract.IsStandard), asset_id, amount) ?? base.FindUnspentCoins(asset_id, amount, from));
         }
 
         public override WalletAccount GetAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             lock (accounts)
             {
                 accounts.TryGetValue(scriptHash, out UserWalletAccount account);
-                return account;
+                return TR.Exit(account);
             }
         }
 
         public override IEnumerable<WalletAccount> GetAccounts()
         {
+            TR.Enter();
             lock (accounts)
             {
                 foreach (UserWalletAccount account in accounts.Values)
-                    yield return account;
+                    yield return TR.Exit(account);
             }
         }
 
         public override IEnumerable<Coin> GetCoins(IEnumerable<UInt160> accounts)
         {
+            TR.Enter();
             if (unconfirmed.Count == 0)
-                return WalletIndexer.GetCoins(accounts);
+                return TR.Exit(WalletIndexer.GetCoins(accounts));
             else
-                return GetCoinsInternal();
+                return TR.Exit(GetCoinsInternal());
             IEnumerable<Coin> GetCoinsInternal()
             {
                 HashSet<CoinReference> inputs, claims;
@@ -377,42 +413,44 @@ namespace Neo.Implementations.Wallets.EntityFramework
                     if (inputs.Contains(coin.Reference))
                     {
                         if (coin.Output.AssetId.Equals(Blockchain.GoverningToken.Hash))
-                            yield return new Coin
+                            yield return TR.Exit(new Coin
                             {
                                 Reference = coin.Reference,
                                 Output = coin.Output,
                                 State = coin.State | CoinState.Spent
-                            };
+                            });
                         continue;
                     }
                     else if (claims.Contains(coin.Reference))
                     {
                         continue;
                     }
-                    yield return coin;
+                    yield return TR.Exit(coin);
                 }
                 HashSet<UInt160> accounts_set = new HashSet<UInt160>(accounts);
                 foreach (Coin coin in coins_unconfirmed)
                 {
                     if (accounts_set.Contains(coin.Output.ScriptHash))
-                        yield return coin;
+                        yield return TR.Exit(coin);
                 }
             }
         }
 
         public override IEnumerable<UInt256> GetTransactions()
         {
+            TR.Enter();
             foreach (UInt256 hash in WalletIndexer.GetTransactions(accounts.Keys))
-                yield return hash;
+                yield return TR.Exit(hash);
             lock (unconfirmed)
             {
                 foreach (UInt256 hash in unconfirmed.Keys)
-                    yield return hash;
+                    yield return TR.Exit(hash);
             }
         }
 
         private Dictionary<UInt160, UserWalletAccount> LoadAccounts()
         {
+            TR.Enter();
             using (WalletDataContext ctx = new WalletDataContext(path))
             {
                 Dictionary<UInt160, UserWalletAccount> accounts = ctx.Addresses.Select(p => p.ScriptHash).AsEnumerable().Select(p => new UserWalletAccount(new UInt160(p))).ToDictionary(p => p.ScriptHash);
@@ -423,39 +461,45 @@ namespace Neo.Implementations.Wallets.EntityFramework
                     account.Contract = contract;
                     account.Key = new KeyPair(DecryptPrivateKey(db_contract.Account.PrivateKeyEncrypted));
                 }
-                return accounts;
+                return TR.Exit(accounts);
             }
         }
 
         private byte[] LoadStoredData(string name)
         {
+            TR.Enter();
             using (WalletDataContext ctx = new WalletDataContext(path))
             {
-                return ctx.Keys.FirstOrDefault(p => p.Name == name)?.Value;
+                return TR.Exit(ctx.Keys.FirstOrDefault(p => p.Name == name)?.Value);
             }
         }
 
         public static UserWallet Open(string path, string password)
         {
-            return new UserWallet(path, password.ToAesKey(), false);
+            TR.Enter();
+            return TR.Exit(new UserWallet(path, password.ToAesKey(), false));
         }
 
         public static UserWallet Open(string path, SecureString password)
         {
-            return new UserWallet(path, password.ToAesKey(), false);
+            TR.Enter();
+            return TR.Exit(new UserWallet(path, password.ToAesKey(), false));
         }
 
         private void SaveStoredData(string name, byte[] value)
         {
+            TR.Enter();
             using (WalletDataContext ctx = new WalletDataContext(path))
             {
                 SaveStoredData(ctx, name, value);
                 ctx.SaveChanges();
             }
+            TR.Exit();
         }
 
         private static void SaveStoredData(WalletDataContext ctx, string name, byte[] value)
         {
+            TR.Enter();
             Key key = ctx.Keys.FirstOrDefault(p => p.Name == name);
             if (key == null)
             {
@@ -469,15 +513,18 @@ namespace Neo.Implementations.Wallets.EntityFramework
             {
                 key.Value = value;
             }
+            TR.Exit();
         }
 
         public override bool VerifyPassword(string password)
         {
-            return password.ToAesKey().Sha256().SequenceEqual(LoadStoredData("PasswordHash"));
+            TR.Enter();
+            return TR.Exit(password.ToAesKey().Sha256().SequenceEqual(LoadStoredData("PasswordHash")));
         }
 
         private void WalletIndexer_BalanceChanged(object sender, BalanceEventArgs e)
         {
+            TR.Enter();
             lock (unconfirmed)
             {
                 unconfirmed.Remove(e.Transaction.Hash);
@@ -497,6 +544,7 @@ namespace Neo.Implementations.Wallets.EntityFramework
                     Time = e.Time
                 });
             }
+            TR.Exit();
         }
     }
 }
