@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using DbgViewTR;
 
 namespace Neo.IO.Wrappers
 {
@@ -10,17 +11,23 @@ namespace Neo.IO.Wrappers
 
         public ByteWrapper(byte value)
         {
+            TR.Enter();
             this.value = value;
+            TR.Exit();
         }
 
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             value = reader.ReadByte();
+            TR.Exit();
         }
 
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(value);
+            TR.Exit();
         }
     }
 }
