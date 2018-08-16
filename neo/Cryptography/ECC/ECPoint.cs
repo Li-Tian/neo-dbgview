@@ -180,7 +180,7 @@ namespace Neo.Cryptography.ECC
         /// <returns>返回编码后的字节数组</returns>
         public byte[] EncodePoint(bool commpressed)
         {
-            TR.Exit();
+            TR.Enter();
             if (IsInfinity) return new byte[1];
             byte[] data;
             if (commpressed)
