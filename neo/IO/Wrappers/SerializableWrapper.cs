@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.IO.Wrappers
 {
@@ -12,7 +13,8 @@ namespace Neo.IO.Wrappers
 
         public static implicit operator SerializableWrapper(byte value)
         {
-            return new ByteWrapper(value);
+            TR.Enter();
+            return TR.Exit(new ByteWrapper(value));
         }
     }
 
