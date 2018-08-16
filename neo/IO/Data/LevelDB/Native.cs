@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using DbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -249,12 +250,15 @@ namespace Neo.IO.Data.LevelDB
     {
         public static void CheckError(IntPtr error)
         {
+            TR.Enter();
             if (error != IntPtr.Zero)
             {
                 string message = Marshal.PtrToStringAnsi(error);
                 Native.leveldb_free(error);
+                TR.Exit();
                 throw new LevelDBException(message);
             }
+            TR.Exit();
         }
     }
 }

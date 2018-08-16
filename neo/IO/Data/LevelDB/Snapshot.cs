@@ -1,4 +1,5 @@
 ﻿using System;
+using DbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -8,17 +9,21 @@ namespace Neo.IO.Data.LevelDB
 
         internal Snapshot(IntPtr db)
         {
+            TR.Enter();
             this.db = db;
             this.handle = Native.leveldb_create_snapshot(db);
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             if (handle != IntPtr.Zero)
             {
                 Native.leveldb_release_snapshot(db, handle);
                 handle = IntPtr.Zero;
             }
+            TR.Exit();
         }
     }
 }
