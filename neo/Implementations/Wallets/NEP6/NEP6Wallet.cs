@@ -9,6 +9,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using UserWallet = Neo.Implementations.Wallets.EntityFramework.UserWallet;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.NEP6
 {
@@ -31,6 +32,7 @@ namespace Neo.Implementations.Wallets.NEP6
 
         public NEP6Wallet(string path, string name = null)
         {
+            TR.Enter();
             this.path = path;
             if (File.Exists(path))
             {
@@ -55,10 +57,12 @@ namespace Neo.Implementations.Wallets.NEP6
                 this.extra = JObject.Null;
             }
             WalletIndexer.BalanceChanged += WalletIndexer_BalanceChanged;
+            TR.Exit();
         }
 
         private void AddAccount(NEP6Account account, bool is_import)
         {
+            TR.Enter();
             lock (accounts)
             {
                 if (accounts.TryGetValue(account.ScriptHash, out NEP6Account account_old))
@@ -88,10 +92,12 @@ namespace Neo.Implementations.Wallets.NEP6
                 }
                 accounts[account.ScriptHash] = account;
             }
+            TR.Exit();
         }
 
         public override void ApplyTransaction(Transaction tx)
         {
+            TR.Enter();
             lock (unconfirmed)
             {
                 unconfirmed[tx.Hash] = tx;
@@ -103,18 +109,21 @@ namespace Neo.Implementations.Wallets.NEP6
                 Height = null,
                 Time = DateTime.UtcNow.ToTimestamp()
             });
+            TR.Exit();
         }
 
         public override bool Contains(UInt160 scriptHash)
         {
+            TR.Enter();
             lock (accounts)
             {
-                return accounts.ContainsKey(scriptHash);
+                return TR.Exit(accounts.ContainsKey(scriptHash));
             }
         }
 
         public override WalletAccount CreateAccount(byte[] privateKey)
         {
+            TR.Enter();
             KeyPair key = new KeyPair(privateKey);
             NEP6Contract contract = new NEP6Contract
             {
@@ -128,11 +137,12 @@ namespace Neo.Implementations.Wallets.NEP6
                 Contract = contract
             };
             AddAccount(account, false);
-            return account;
+            return TR.Exit(account);
         }
 
         public override WalletAccount CreateAccount(Contract contract, KeyPair key = null)
         {
+            TR.Enter();
             NEP6Contract nep6contract = contract as NEP6Contract;
             if (nep6contract == null)
             {
@@ -151,23 +161,26 @@ namespace Neo.Implementations.Wallets.NEP6
                 account = new NEP6Account(this, nep6contract.ScriptHash, key, password);
             account.Contract = nep6contract;
             AddAccount(account, false);
-            return account;
+            return TR.Exit(account);
         }
 
         public override WalletAccount CreateAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             NEP6Account account = new NEP6Account(this, scriptHash);
             AddAccount(account, true);
-            return account;
+            return TR.Exit(account);
         }
 
         public KeyPair DecryptKey(string nep2key)
         {
-            return new KeyPair(GetPrivateKeyFromNEP2(nep2key, password, Scrypt.N, Scrypt.R, Scrypt.P));
+            TR.Enter();
+            return TR.Exit(new KeyPair(GetPrivateKeyFromNEP2(nep2key, password, Scrypt.N, Scrypt.R, Scrypt.P)));
         }
 
         public override bool DeleteAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             bool removed;
             lock (accounts)
             {
@@ -177,43 +190,49 @@ namespace Neo.Implementations.Wallets.NEP6
             {
                 WalletIndexer.UnregisterAccounts(new[] { scriptHash });
             }
-            return removed;
+            return TR.Exit(removed);
         }
 
         public void Dispose()
         {
+            TR.Enter();
             WalletIndexer.BalanceChanged -= WalletIndexer_BalanceChanged;
+            TR.Exit();
         }
 
         public override Coin[] FindUnspentCoins(UInt256 asset_id, Fixed8 amount, UInt160[] from)
         {
-            return FindUnspentCoins(FindUnspentCoins(from).ToArray().Where(p => GetAccount(p.Output.ScriptHash).Contract.IsStandard), asset_id, amount) ?? base.FindUnspentCoins(asset_id, amount, from);
+            TR.Enter();
+            return TR.Exit(FindUnspentCoins(FindUnspentCoins(from).ToArray().Where(p => GetAccount(p.Output.ScriptHash).Contract.IsStandard), asset_id, amount) ?? base.FindUnspentCoins(asset_id, amount, from));
         }
 
         public override WalletAccount GetAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             lock (accounts)
             {
                 accounts.TryGetValue(scriptHash, out NEP6Account account);
-                return account;
+                return TR.Exit(account);
             }
         }
 
         public override IEnumerable<WalletAccount> GetAccounts()
         {
+            TR.Enter();
             lock (accounts)
             {
                 foreach (NEP6Account account in accounts.Values)
-                    yield return account;
+                    yield return TR.Exit(account);
             }
         }
 
         public override IEnumerable<Coin> GetCoins(IEnumerable<UInt160> accounts)
         {
+            TR.Enter();
             if (unconfirmed.Count == 0)
-                return WalletIndexer.GetCoins(accounts);
+                return TR.Exit(WalletIndexer.GetCoins(accounts));
             else
-                return GetCoinsInternal();
+                return TR.Exit(GetCoinsInternal());
             IEnumerable<Coin> GetCoinsInternal()
             {
                 HashSet<CoinReference> inputs, claims;
@@ -238,42 +257,44 @@ namespace Neo.Implementations.Wallets.NEP6
                     if (inputs.Contains(coin.Reference))
                     {
                         if (coin.Output.AssetId.Equals(Blockchain.GoverningToken.Hash))
-                            yield return new Coin
+                            yield return TR.Exit(new Coin
                             {
                                 Reference = coin.Reference,
                                 Output = coin.Output,
                                 State = coin.State | CoinState.Spent
-                            };
+                            });
                         continue;
                     }
                     else if (claims.Contains(coin.Reference))
                     {
                         continue;
                     }
-                    yield return coin;
+                    yield return TR.Exit(coin);
                 }
                 HashSet<UInt160> accounts_set = new HashSet<UInt160>(accounts);
                 foreach (Coin coin in coins_unconfirmed)
                 {
                     if (accounts_set.Contains(coin.Output.ScriptHash))
-                        yield return coin;
+                        yield return TR.Exit(coin);
                 }
             }
         }
 
         public override IEnumerable<UInt256> GetTransactions()
         {
+            TR.Enter();
             foreach (UInt256 hash in WalletIndexer.GetTransactions(accounts.Keys))
-                yield return hash;
+                yield return TR.Exit(hash);
             lock (unconfirmed)
             {
                 foreach (UInt256 hash in unconfirmed.Keys)
-                    yield return hash;
+                    yield return TR.Exit(hash);
             }
         }
 
         public override WalletAccount Import(X509Certificate2 cert)
         {
+            TR.Enter();
             KeyPair key;
             using (ECDsa ecdsa = cert.GetECDsaPrivateKey())
             {
@@ -291,11 +312,12 @@ namespace Neo.Implementations.Wallets.NEP6
                 Contract = contract
             };
             AddAccount(account, true);
-            return account;
+            return TR.Exit(account);
         }
 
         public override WalletAccount Import(string wif)
         {
+            TR.Enter();
             KeyPair key = new KeyPair(GetPrivateKeyFromWIF(wif));
             NEP6Contract contract = new NEP6Contract
             {
@@ -309,11 +331,12 @@ namespace Neo.Implementations.Wallets.NEP6
                 Contract = contract
             };
             AddAccount(account, true);
-            return account;
+            return TR.Exit(account);
         }
 
         public override WalletAccount Import(string nep2, string passphrase)
         {
+            TR.Enter();
             KeyPair key = new KeyPair(GetPrivateKeyFromNEP2(nep2, passphrase));
             NEP6Contract contract = new NEP6Contract
             {
@@ -329,16 +352,19 @@ namespace Neo.Implementations.Wallets.NEP6
                 account = new NEP6Account(this, contract.ScriptHash, key, passphrase);
             account.Contract = contract;
             AddAccount(account, true);
-            return account;
+            return TR.Exit(account);
         }
 
         internal void Lock()
         {
+            TR.Enter();
             password = null;
+            TR.Exit();
         }
 
         public static NEP6Wallet Migrate(string path, string db3path, string password)
         {
+            TR.Enter();
             using (UserWallet wallet_old = UserWallet.Open(db3path, password))
             {
                 NEP6Wallet wallet_new = new NEP6Wallet(path, wallet_old.Name);
@@ -349,12 +375,13 @@ namespace Neo.Implementations.Wallets.NEP6
                         wallet_new.CreateAccount(account.Contract, account.GetKey());
                     }
                 }
-                return wallet_new;
+                return TR.Exit(wallet_new);
             }
         }
 
         public void Save()
         {
+            TR.Enter();
             JObject wallet = new JObject();
             wallet["name"] = name;
             wallet["version"] = version.ToString();
@@ -362,18 +389,24 @@ namespace Neo.Implementations.Wallets.NEP6
             wallet["accounts"] = new JArray(accounts.Values.Select(p => p.ToJson()));
             wallet["extra"] = extra;
             File.WriteAllText(path, wallet.ToString());
+            TR.Exit();
         }
 
         public IDisposable Unlock(string password)
         {
+            TR.Enter();
             if (!VerifyPassword(password))
+            {
+                TR.Exit();
                 throw new CryptographicException();
+            }
             this.password = password;
-            return new WalletLocker(this);
+            return TR.Exit(new WalletLocker(this));
         }
 
         public override bool VerifyPassword(string password)
         {
+            TR.Enter();
             lock (accounts)
             {
                 NEP6Account account = accounts.Values.FirstOrDefault(p => !p.Decrypted);
@@ -381,21 +414,21 @@ namespace Neo.Implementations.Wallets.NEP6
                 {
                     account = accounts.Values.FirstOrDefault(p => p.HasKey);
                 }
-                if (account == null) return true;
+                if (account == null) return TR.Exit(true);
                 if (account.Decrypted)
                 {
-                    return account.VerifyPassword(password);
+                    return TR.Exit(account.VerifyPassword(password));
                 }
                 else
                 {
                     try
                     {
                         account.GetKey(password);
-                        return true;
+                        return TR.Exit(true);
                     }
                     catch (FormatException)
                     {
-                        return false;
+                        return TR.Exit(false);
                     }
                 }
             }
@@ -403,6 +436,7 @@ namespace Neo.Implementations.Wallets.NEP6
 
         private void WalletIndexer_BalanceChanged(object sender, BalanceEventArgs e)
         {
+            TR.Enter();
             lock (unconfirmed)
             {
                 unconfirmed.Remove(e.Transaction.Hash);
@@ -422,6 +456,7 @@ namespace Neo.Implementations.Wallets.NEP6
                     Time = e.Time
                 });
             }
+            TR.Exit();
         }
     }
 }

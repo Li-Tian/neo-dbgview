@@ -1,4 +1,5 @@
 ﻿using Neo.IO.Json;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.NEP6
 {
@@ -10,23 +11,27 @@ namespace Neo.Implementations.Wallets.NEP6
 
         public ScryptParameters(int n, int r, int p)
         {
+            TR.Enter();
             this.N = n;
             this.R = r;
             this.P = p;
+            TR.Exit();
         }
 
         public static ScryptParameters FromJson(JObject json)
         {
-            return new ScryptParameters((int)json["n"].AsNumber(), (int)json["r"].AsNumber(), (int)json["p"].AsNumber());
+            TR.Enter();
+            return TR.Exit(new ScryptParameters((int)json["n"].AsNumber(), (int)json["r"].AsNumber(), (int)json["p"].AsNumber()));
         }
 
         public JObject ToJson()
         {
+            TR.Enter();
             JObject json = new JObject();
             json["n"] = N;
             json["r"] = R;
             json["p"] = P;
-            return json;
+            return TR.Exit(json);
         }
     }
 }
