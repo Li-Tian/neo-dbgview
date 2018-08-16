@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.IO.Json
 {
@@ -27,87 +28,105 @@ namespace Neo.IO.Json
 
         public virtual bool AsBoolean()
         {
+            TR.Enter();
+            TR.Exit();
             throw new InvalidCastException();
         }
 
         public bool AsBooleanOrDefault(bool value = false)
         {
+            TR.Enter();
             if (!CanConvertTo(typeof(bool)))
-                return value;
-            return AsBoolean();
+                return TR.Exit(value);
+            return TR.Exit(AsBoolean());
         }
 
         public virtual T AsEnum<T>(bool ignoreCase = false)
         {
+            TR.Enter();
+            TR.Exit();
             throw new InvalidCastException();
         }
 
         public T AsEnumOrDefault<T>(T value = default(T), bool ignoreCase = false)
         {
+            TR.Enter();
             if (!CanConvertTo(typeof(T)))
-                return value;
-            return AsEnum<T>(ignoreCase);
+                return TR.Exit(value);
+            return TR.Exit(AsEnum<T>(ignoreCase));
         }
 
         public virtual double AsNumber()
         {
+            TR.Enter();
+            TR.Exit();
             throw new InvalidCastException();
         }
 
         public double AsNumberOrDefault(double value = 0)
         {
+            TR.Enter();
             if (!CanConvertTo(typeof(double)))
-                return value;
-            return AsNumber();
+                return TR.Exit(value);
+            return TR.Exit(AsNumber());
         }
 
         public virtual string AsString()
         {
-            throw new InvalidCastException();
+            TR.Enter();
+            throw TR.Exit(new InvalidCastException());
         }
 
         public string AsStringOrDefault(string value = null)
         {
+            TR.Enter();
             if (!CanConvertTo(typeof(string)))
-                return value;
-            return AsString();
+                return TR.Exit(value);
+            return TR.Exit(AsString());
         }
 
         public virtual bool CanConvertTo(Type type)
         {
-            return false;
+            TR.Enter();
+            return TR.Exit(false);
         }
 
         public bool ContainsProperty(string key)
         {
-            return properties.ContainsKey(key);
+            TR.Enter();
+            return TR.Exit(properties.ContainsKey(key));
         }
 
         public static JObject Parse(TextReader reader)
         {
+            TR.Enter();
             SkipSpace(reader);
             char firstChar = (char)reader.Peek();
             if (firstChar == '\"' || firstChar == '\'')
             {
-                return JString.Parse(reader);
+                return TR.Exit(JString.Parse(reader));
             }
             if (firstChar == '[')
             {
-                return JArray.Parse(reader);
+                return TR.Exit(JArray.Parse(reader));
             }
             if ((firstChar >= '0' && firstChar <= '9') || firstChar == '-')
             {
-                return JNumber.Parse(reader);
+                return TR.Exit(JNumber.Parse(reader));
             }
             if (firstChar == 't' || firstChar == 'f')
             {
-                return JBoolean.Parse(reader);
+                return TR.Exit(JBoolean.Parse(reader));
             }
             if (firstChar == 'n')
             {
-                return ParseNull(reader);
+                return TR.Exit(ParseNull(reader));
             }
-            if (reader.Read() != '{') throw new FormatException();
+            if (reader.Read() != '{')
+            {
+                TR.Exit();
+                throw new FormatException();
+            }
             SkipSpace(reader);
             JObject obj = new JObject();
             while (reader.Peek() != '}')
@@ -116,25 +135,31 @@ namespace Neo.IO.Json
                 SkipSpace(reader);
                 string name = JString.Parse(reader).Value;
                 SkipSpace(reader);
-                if (reader.Read() != ':') throw new FormatException();
+                if (reader.Read() != ':')
+                {
+                    TR.Exit();
+                    throw new FormatException();
+                }
                 JObject value = Parse(reader);
                 obj.properties.Add(name, value);
                 SkipSpace(reader);
             }
             reader.Read();
-            return obj;
+            return TR.Exit(obj);
         }
 
         public static JObject Parse(string value)
         {
+            TR.Enter();
             using (StringReader reader = new StringReader(value))
             {
-                return Parse(reader);
+                return TR.Exit(Parse(reader));
             }
         }
 
         private static JObject ParseNull(TextReader reader)
         {
+            TR.Enter();
             char firstChar = (char)reader.Read();
             if (firstChar == 'n')
             {
@@ -143,22 +168,27 @@ namespace Neo.IO.Json
                 int c4 = reader.Read();
                 if (c2 == 'u' && c3 == 'l' && c4 == 'l')
                 {
+                    TR.Exit();
                     return null;
                 }
             }
+            TR.Exit();
             throw new FormatException();
         }
 
         protected static void SkipSpace(TextReader reader)
         {
+            TR.Enter();
             while (reader.Peek() == ' ' || reader.Peek() == '\t' || reader.Peek() == '\r' || reader.Peek() == '\n')
             {
                 reader.Read();
             }
+            TR.Exit();
         }
 
         public override string ToString()
         {
+            TR.Enter();
             StringBuilder sb = new StringBuilder();
             sb.Append('{');
             foreach (KeyValuePair<string, JObject> pair in properties)
@@ -185,32 +215,37 @@ namespace Neo.IO.Json
             {
                 sb[sb.Length - 1] = '}';
             }
-            return sb.ToString();
+            return TR.Exit(sb.ToString());
         }
 
         public static implicit operator JObject(Enum value)
         {
-            return new JString(value.ToString());
+            TR.Enter();
+            return TR.Exit(new JString(value.ToString()));
         }
 
         public static implicit operator JObject(JObject[] value)
         {
-            return new JArray(value);
+            TR.Enter();
+            return TR.Exit(new JArray(value));
         }
 
         public static implicit operator JObject(bool value)
         {
-            return new JBoolean(value);
+            TR.Enter();
+            return TR.Exit(new JBoolean(value));
         }
 
         public static implicit operator JObject(double value)
         {
-            return new JNumber(value);
+            TR.Enter();
+            return TR.Exit(new JNumber(value));
         }
 
         public static implicit operator JObject(string value)
         {
-            return value == null ? null : new JString(value);
+            TR.Enter();
+            return TR.Exit(value == null ? null : new JString(value));
         }
     }
 }

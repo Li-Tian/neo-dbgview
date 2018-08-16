@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.IO.Json
 {
@@ -16,7 +17,9 @@ namespace Neo.IO.Json
 
         public JArray(IEnumerable<JObject> items)
         {
+            TR.Enter();
             this.items.AddRange(items);
+            TR.Exit();
         }
 
         public JObject this[int index]
@@ -49,48 +52,65 @@ namespace Neo.IO.Json
 
         public void Add(JObject item)
         {
+            TR.Enter();
             items.Add(item);
+            TR.Exit();
         }
 
         public void Clear()
         {
+            TR.Enter();
             items.Clear();
+            TR.Exit();
         }
 
         public bool Contains(JObject item)
         {
-            return items.Contains(item);
+            TR.Enter();
+            return TR.Exit(items.Contains(item));
         }
 
         public void CopyTo(JObject[] array, int arrayIndex)
         {
+            TR.Enter();
             items.CopyTo(array, arrayIndex);
+            TR.Exit();
         }
 
         public IEnumerator<JObject> GetEnumerator()
         {
-            return items.GetEnumerator();
+            TR.Enter();
+            return TR.Exit(items.GetEnumerator());
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator();
+            TR.Enter();
+            return TR.Exit(GetEnumerator());
         }
 
         public int IndexOf(JObject item)
         {
-            return items.IndexOf(item);
+            TR.Enter();
+            return TR.Exit(items.IndexOf(item));
         }
 
         public void Insert(int index, JObject item)
         {
+            TR.Enter();
             items.Insert(index, item);
+            TR.Exit();
         }
 
         internal new static JArray Parse(TextReader reader)
         {
+            TR.Enter();
             SkipSpace(reader);
-            if (reader.Read() != '[') throw new FormatException();
+            if (reader.Read() != '[')
+            {
+                TR.Exit();
+                throw new FormatException();
+            }
             SkipSpace(reader);
             JArray array = new JArray();
             while (reader.Peek() != ']')
@@ -101,21 +121,25 @@ namespace Neo.IO.Json
                 SkipSpace(reader);
             }
             reader.Read();
-            return array;
+            return TR.Exit(array);
         }
 
         public bool Remove(JObject item)
         {
-            return items.Remove(item);
+            TR.Enter();
+            return TR.Exit(items.Remove(item));
         }
 
         public void RemoveAt(int index)
         {
+            TR.Enter();
             items.RemoveAt(index);
+            TR.Exit();
         }
 
         public override string ToString()
         {
+            TR.Enter();
             StringBuilder sb = new StringBuilder();
             sb.Append('[');
             foreach (JObject item in items)
@@ -134,7 +158,7 @@ namespace Neo.IO.Json
             {
                 sb[sb.Length - 1] = ']';
             }
-            return sb.ToString();
+            return TR.Exit(sb.ToString());
         }
     }
 }
