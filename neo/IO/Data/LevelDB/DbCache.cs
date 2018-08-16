@@ -1,6 +1,7 @@
 ﻿using Neo.IO.Caching;
 using System;
 using System.Collections.Generic;
+using DbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -14,39 +15,50 @@ namespace Neo.IO.Data.LevelDB
 
         public DbCache(DB db, byte prefix, WriteBatch batch = null)
         {
+            TR.Enter();
             this.db = db;
             this.batch = batch;
             this.prefix = prefix;
+            TR.Exit();
         }
 
         protected override void AddInternal(TKey key, TValue value)
         {
+            TR.Enter();
             batch?.Put(prefix, key, value);
+            TR.Exit();
         }
 
         public override void DeleteInternal(TKey key)
         {
+            TR.Enter();
             batch?.Delete(prefix, key);
+            TR.Exit();
         }
 
         protected override IEnumerable<KeyValuePair<TKey, TValue>> FindInternal(byte[] key_prefix)
         {
-            return db.Find(ReadOptions.Default, SliceBuilder.Begin(prefix).Add(key_prefix), (k, v) => new KeyValuePair<TKey, TValue>(k.ToArray().AsSerializable<TKey>(1), v.ToArray().AsSerializable<TValue>()));
+            TR.Enter();
+            return TR.Exit(db.Find(ReadOptions.Default, SliceBuilder.Begin(prefix).Add(key_prefix), (k, v) => new KeyValuePair<TKey, TValue>(k.ToArray().AsSerializable<TKey>(1), v.ToArray().AsSerializable<TValue>())));
         }
 
         protected override TValue GetInternal(TKey key)
         {
-            return db.Get<TValue>(ReadOptions.Default, prefix, key);
+            TR.Enter();
+            return TR.Exit(db.Get<TValue>(ReadOptions.Default, prefix, key));
         }
 
         protected override TValue TryGetInternal(TKey key)
         {
-            return db.TryGet<TValue>(ReadOptions.Default, prefix, key);
+            TR.Enter();
+            return TR.Exit(db.TryGet<TValue>(ReadOptions.Default, prefix, key));
         }
 
         protected override void UpdateInternal(TKey key, TValue value)
         {
+            TR.Enter();
             batch?.Put(prefix, key, value);
+            TR.Exit();
         }
     }
 }

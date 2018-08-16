@@ -1,5 +1,6 @@
 ﻿using Neo.IO.Caching;
 using System;
+using DbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -17,6 +18,7 @@ namespace Neo.IO.Data.LevelDB
 
         public void Commit(WriteBatch batch)
         {
+            TR.Enter();
             switch (State)
             {
                 case TrackState.Added:
@@ -27,13 +29,18 @@ namespace Neo.IO.Data.LevelDB
                     batch.Delete(prefix);
                     break;
             }
+            TR.Exit();
         }
 
         protected override T TryGetInternal()
         {
+            TR.Enter();
             if (!db.TryGet(ReadOptions.Default, prefix, out Slice slice))
+            {
+                TR.Exit();
                 return null;
-            return slice.ToArray().AsSerializable<T>();
+            }
+            return TR.Exit(slice.ToArray().AsSerializable<T>());
         }
     }
 }
