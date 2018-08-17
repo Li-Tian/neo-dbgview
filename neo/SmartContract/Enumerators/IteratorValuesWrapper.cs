@@ -1,5 +1,6 @@
 ﻿using Neo.SmartContract.Iterators;
 using Neo.VM;
+using DbgViewTR;
 
 namespace Neo.SmartContract.Enumerators
 {
@@ -9,22 +10,28 @@ namespace Neo.SmartContract.Enumerators
 
         public IteratorValuesWrapper(IIterator iterator)
         {
+            TR.Enter();
             this.iterator = iterator;
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             iterator.Dispose();
+            TR.Exit();
         }
 
         public bool Next()
         {
-            return iterator.Next();
+            TR.Enter();
+            return TR.Exit(iterator.Next());
         }
 
         public StackItem Value()
         {
-            return iterator.Value();
+            TR.Enter();
+            return TR.Exit(iterator.Value());
         }
     }
 }
