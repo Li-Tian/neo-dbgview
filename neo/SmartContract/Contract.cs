@@ -4,6 +4,7 @@ using Neo.VM;
 using Neo.Wallets;
 using System;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.SmartContract
 {
@@ -54,26 +55,32 @@ namespace Neo.SmartContract
 
         public static Contract Create(ContractParameterType[] parameterList, byte[] redeemScript)
         {
-            return new Contract
+            TR.Enter();
+            return TR.Exit(new Contract
             {
                 Script = redeemScript,
                 ParameterList = parameterList
-            };
+            });
         }
 
         public static Contract CreateMultiSigContract(int m, params ECPoint[] publicKeys)
         {
-            return new Contract
+            TR.Enter();
+            return TR.Exit(new Contract
             {
                 Script = CreateMultiSigRedeemScript(m, publicKeys),
                 ParameterList = Enumerable.Repeat(ContractParameterType.Signature, m).ToArray()
-            };
+            });
         }
 
         public static byte[] CreateMultiSigRedeemScript(int m, params ECPoint[] publicKeys)
         {
+            TR.Enter();
             if (!(1 <= m && m <= publicKeys.Length && publicKeys.Length <= 1024))
+            {
+                TR.Exit();
                 throw new ArgumentException();
+            }
             using (ScriptBuilder sb = new ScriptBuilder())
             {
                 sb.EmitPush(m);
@@ -83,36 +90,39 @@ namespace Neo.SmartContract
                 }
                 sb.EmitPush(publicKeys.Length);
                 sb.Emit(OpCode.CHECKMULTISIG);
-                return sb.ToArray();
+                return TR.Exit(sb.ToArray());
             }
         }
 
         public static Contract CreateSignatureContract(ECPoint publicKey)
         {
-            return new Contract
+            TR.Enter();
+            return TR.Exit(new Contract
             {
                 Script = CreateSignatureRedeemScript(publicKey),
                 ParameterList = new[] { ContractParameterType.Signature }
-            };
+            });
         }
 
         public static byte[] CreateSignatureRedeemScript(ECPoint publicKey)
         {
+            TR.Enter();
             using (ScriptBuilder sb = new ScriptBuilder())
             {
                 sb.EmitPush(publicKey.EncodePoint(true));
                 sb.Emit(OpCode.CHECKSIG);
-                return sb.ToArray();
+                return TR.Exit(sb.ToArray());
             }
         }
 
         public virtual bool IsMultiSigContract()
         {
+            TR.Enter();
             int m, n = 0;
             int i = 0;
-            if (Script.Length < 37) return false;
-            if (Script[i] > (byte)OpCode.PUSH16) return false;
-            if (Script[i] < (byte)OpCode.PUSH1 && Script[i] != 1 && Script[i] != 2) return false;
+            if (Script.Length < 37) return TR.Exit(false);
+            if (Script[i] > (byte)OpCode.PUSH16) return TR.Exit(false);
+            if (Script[i] < (byte)OpCode.PUSH1 && Script[i] != 1 && Script[i] != 2) return TR.Exit(false);
             switch (Script[i])
             {
                 case 1:
@@ -127,31 +137,31 @@ namespace Neo.SmartContract
                     m = Script[i++] - 80;
                     break;
             }
-            if (m < 1 || m > 1024) return false;
+            if (m < 1 || m > 1024) return TR.Exit(false);
             while (Script[i] == 33)
             {
                 i += 34;
-                if (Script.Length <= i) return false;
+                if (Script.Length <= i) return TR.Exit(false);
                 ++n;
             }
-            if (n < m || n > 1024) return false;
+            if (n < m || n > 1024) return TR.Exit(false);
             switch (Script[i])
             {
                 case 1:
-                    if (n != Script[++i]) return false;
+                    if (n != Script[++i]) return TR.Exit(false);
                     ++i;
                     break;
                 case 2:
-                    if (n != Script.ToUInt16(++i)) return false;
+                    if (n != Script.ToUInt16(++i)) return TR.Exit(false);
                     i += 2;
                     break;
                 default:
-                    if (n != Script[i++] - 80) return false;
+                    if (n != Script[i++] - 80) return TR.Exit(false);
                     break;
             }
-            if (Script[i++] != (byte)OpCode.CHECKMULTISIG) return false;
-            if (Script.Length != i) return false;
-            return true;
+            if (Script[i++] != (byte)OpCode.CHECKMULTISIG) return TR.Exit(false);
+            if (Script.Length != i) return TR.Exit(false);
+            return TR.Exit(true);
         }
     }
 }
