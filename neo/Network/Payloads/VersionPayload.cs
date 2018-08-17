@@ -2,6 +2,7 @@
 using Neo.IO;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Network.Payloads
 {
@@ -20,7 +21,8 @@ namespace Neo.Network.Payloads
 
         public static VersionPayload Create(int port, uint nonce, string userAgent)
         {
-            return new VersionPayload
+            TR.Enter();
+            return TR.Exit(new VersionPayload
             {
                 Version = LocalNode.ProtocolVersion,
                 Services = NetworkAddressWithTime.NODE_NETWORK,
@@ -30,11 +32,12 @@ namespace Neo.Network.Payloads
                 UserAgent = userAgent,
                 StartHeight = Blockchain.Default?.Height ?? 0,
                 Relay = true
-            };
+            });
         }
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             Version = reader.ReadUInt32();
             Services = reader.ReadUInt64();
             Timestamp = reader.ReadUInt32();
@@ -43,10 +46,12 @@ namespace Neo.Network.Payloads
             UserAgent = reader.ReadVarString(1024);
             StartHeight = reader.ReadUInt32();
             Relay = reader.ReadBoolean();
+            TR.Exit();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(Version);
             writer.Write(Services);
             writer.Write(Timestamp);
@@ -55,6 +60,7 @@ namespace Neo.Network.Payloads
             writer.WriteVarString(UserAgent);
             writer.Write(StartHeight);
             writer.Write(Relay);
+            TR.Exit();
         }
     }
 }

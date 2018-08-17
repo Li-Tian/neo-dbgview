@@ -4,6 +4,7 @@ using Neo.IO;
 using System.Collections;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Network.Payloads
 {
@@ -17,11 +18,12 @@ namespace Neo.Network.Payloads
 
         public static MerkleBlockPayload Create(Block block, BitArray flags)
         {
+            TR.Enter();
             MerkleTree tree = new MerkleTree(block.Transactions.Select(p => p.Hash).ToArray());
             tree.Trim(flags);
             byte[] buffer = new byte[(flags.Length + 7) / 8];
             flags.CopyTo(buffer, 0);
-            return new MerkleBlockPayload
+            return TR.Exit(new MerkleBlockPayload
             {
                 Version = block.Version,
                 PrevHash = block.PrevHash,
@@ -34,23 +36,27 @@ namespace Neo.Network.Payloads
                 TxCount = block.Transactions.Length,
                 Hashes = tree.ToHashArray(),
                 Flags = buffer
-            };
+            });
         }
 
         public override void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             base.Deserialize(reader);
             TxCount = (int)reader.ReadVarInt(int.MaxValue);
             Hashes = reader.ReadSerializableArray<UInt256>();
             Flags = reader.ReadVarBytes();
+            TR.Exit();
         }
 
         public override void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             base.Serialize(writer);
             writer.WriteVarInt(TxCount);
             writer.Write(Hashes);
             writer.WriteVarBytes(Flags);
+            TR.Exit();
         }
     }
 }
