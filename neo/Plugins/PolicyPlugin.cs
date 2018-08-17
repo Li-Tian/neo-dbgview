@@ -1,5 +1,6 @@
 ﻿using Neo.Core;
 using System.Collections.Generic;
+using DbgViewTR;
 
 namespace Neo.Plugins
 {
@@ -11,7 +12,9 @@ namespace Neo.Plugins
 
         protected PolicyPlugin()
         {
+            TR.Enter();
             instances.Add(this);
+            TR.Exit();
         }
 
         internal protected virtual bool CheckPolicy(Transaction tx) => true;
