@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Numerics;
+using DbgViewTR;
 
 namespace Neo.Cryptography.ECC
 {
@@ -23,12 +24,14 @@ namespace Neo.Cryptography.ECC
 
         private ECCurve(BigInteger Q, BigInteger A, BigInteger B, BigInteger N, byte[] G)
         {
+            TR.Enter();
             this.Q = Q;
             this.A = new ECFieldElement(A, this);
             this.B = new ECFieldElement(B, this);
             this.N = N;
             this.Infinity = new ECPoint(null, null, this);
             this.G = ECPoint.DecodePoint(G, this);
+            TR.Exit();
         }
 
         /// <summary>

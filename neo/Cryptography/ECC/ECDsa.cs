@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
+using DbgViewTR;
 
 namespace Neo.Cryptography.ECC
 {
@@ -22,7 +23,9 @@ namespace Neo.Cryptography.ECC
         public ECDsa(byte[] privateKey, ECCurve curve)
             : this(curve.G * privateKey)
         {
+            TR.Enter();
             this.privateKey = privateKey;
+            TR.Exit();
         }
 
         /// <summary>
@@ -31,19 +34,22 @@ namespace Neo.Cryptography.ECC
         /// <param name="publicKey">公钥</param>
         public ECDsa(ECPoint publicKey)
         {
+            TR.Enter();
             this.publicKey = publicKey;
             this.curve = publicKey.Curve;
+            TR.Exit();
         }
 
         private BigInteger CalculateE(BigInteger n, byte[] message)
         {
+            TR.Enter();
             int messageBitLength = message.Length * 8;
             BigInteger trunc = new BigInteger(message.Reverse().Concat(new byte[1]).ToArray());
             if (n.GetBitLength() < messageBitLength)
             {
                 trunc >>= messageBitLength - n.GetBitLength();
             }
-            return trunc;
+            return TR.Exit(trunc);
         }
 
         /// <summary>
@@ -53,6 +59,7 @@ namespace Neo.Cryptography.ECC
         /// <returns>返回签名的数字编码（r,s）</returns>
         public BigInteger[] GenerateSignature(byte[] message)
         {
+            TR.Enter();
             if (privateKey == null) throw new InvalidOperationException();
             BigInteger e = CalculateE(curve.N, message);
             BigInteger d = new BigInteger(privateKey.Reverse().Concat(new byte[1]).ToArray());
@@ -82,11 +89,12 @@ namespace Neo.Cryptography.ECC
                 }
                 while (s.Sign == 0);
             }
-            return new BigInteger[] { r, s };
+            return TR.Exit(new BigInteger[] { r, s });
         }
 
         private static ECPoint SumOfTwoMultiplies(ECPoint P, BigInteger k, ECPoint Q, BigInteger l)
         {
+            TR.Enter();
             int m = Math.Max(k.GetBitLength(), l.GetBitLength());
             ECPoint Z = P + Q;
             ECPoint R = P.Curve.Infinity;
@@ -106,7 +114,7 @@ namespace Neo.Cryptography.ECC
                         R = R + Q;
                 }
             }
-            return R;
+            return TR.Exit(R);
         }
 
         /// <summary>
@@ -118,6 +126,7 @@ namespace Neo.Cryptography.ECC
         /// <returns>返回验证的结果</returns>
         public bool VerifySignature(byte[] message, BigInteger r, BigInteger s)
         {
+            TR.Enter();
             if (r.Sign < 1 || s.Sign < 1 || r.CompareTo(curve.N) >= 0 || s.CompareTo(curve.N) >= 0)
                 return false;
             BigInteger e = CalculateE(curve.N, message);
@@ -126,7 +135,7 @@ namespace Neo.Cryptography.ECC
             BigInteger u2 = (r * c).Mod(curve.N);
             ECPoint point = SumOfTwoMultiplies(curve.G, u1, publicKey, u2);
             BigInteger v = point.X.Value.Mod(curve.N);
-            return v.Equals(r);
+            return TR.Exit(v.Equals(r));
         }
     }
 }
