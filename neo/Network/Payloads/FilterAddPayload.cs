@@ -1,5 +1,6 @@
 ﻿using Neo.IO;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Network.Payloads
 {
@@ -11,12 +12,16 @@ namespace Neo.Network.Payloads
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             Data = reader.ReadVarBytes(520);
+            TR.Exit();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.WriteVarBytes(Data);
+            TR.Exit();
         }
     }
 }
