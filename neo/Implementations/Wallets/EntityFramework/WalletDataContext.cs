@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {
@@ -14,19 +15,24 @@ namespace Neo.Implementations.Wallets.EntityFramework
 
         public WalletDataContext(string filename)
         {
+            TR.Enter();
             this.filename = filename;
+            TR.Exit();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
+            TR.Enter();
             base.OnConfiguring(optionsBuilder);
             SqliteConnectionStringBuilder sb = new SqliteConnectionStringBuilder();
             sb.DataSource = filename;
             optionsBuilder.UseSqlite(sb.ToString());
+            TR.Exit();
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            TR.Enter();
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<Account>().ToTable(nameof(Account));
             modelBuilder.Entity<Account>().HasKey(p => p.PublicKeyHash);
@@ -47,6 +53,7 @@ namespace Neo.Implementations.Wallets.EntityFramework
             modelBuilder.Entity<Key>().HasKey(p => p.Name);
             modelBuilder.Entity<Key>().Property(p => p.Name).HasColumnType("VarChar").HasMaxLength(20).IsRequired();
             modelBuilder.Entity<Key>().Property(p => p.Value).HasColumnType("VarBinary").IsRequired();
+            TR.Exit();
         }
     }
 }

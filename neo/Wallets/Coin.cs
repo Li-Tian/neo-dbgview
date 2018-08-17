@@ -1,5 +1,6 @@
 ﻿using Neo.Core;
 using System;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -24,19 +25,22 @@ namespace Neo.Wallets
 
         public bool Equals(Coin other)
         {
-            if (ReferenceEquals(this, other)) return true;
-            if (ReferenceEquals(null, other)) return false;
-            return Reference.Equals(other.Reference);
+            TR.Enter();
+            if (ReferenceEquals(this, other)) return TR.Exit(true);
+            if (ReferenceEquals(null, other)) return TR.Exit(false);
+            return TR.Exit(Reference.Equals(other.Reference));
         }
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as Coin);
+            TR.Enter();
+            return TR.Exit(Equals(obj as Coin));
         }
 
         public override int GetHashCode()
         {
-            return Reference.GetHashCode();
+            TR.Enter();
+            return TR.Exit(Reference.GetHashCode());
         }
     }
 }

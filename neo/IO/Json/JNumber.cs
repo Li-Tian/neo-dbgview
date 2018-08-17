@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reflection;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.IO.Json
 {
@@ -11,67 +12,79 @@ namespace Neo.IO.Json
 
         public JNumber(double value = 0)
         {
+            TR.Enter();
             this.Value = value;
+            TR.Exit();
         }
 
         public override bool AsBoolean()
         {
+            TR.Enter();
             if (Value == 0)
-                return false;
-            return true;
+                return TR.Exit(false);
+            return TR.Exit(true);
         }
 
         public override T AsEnum<T>(bool ignoreCase = false)
         {
+            TR.Enter();
             Type t = typeof(T);
             TypeInfo ti = t.GetTypeInfo();
             if (!ti.IsEnum)
+            {
+                TR.Exit();
                 throw new InvalidCastException();
+            }
             if (ti.GetEnumUnderlyingType() == typeof(byte))
-                return (T)Enum.ToObject(t, (byte)Value);
+                return TR.Exit((T)Enum.ToObject(t, (byte)Value));
             if (ti.GetEnumUnderlyingType() == typeof(int))
-                return (T)Enum.ToObject(t, (int)Value);
+                return TR.Exit((T)Enum.ToObject(t, (int)Value));
             if (ti.GetEnumUnderlyingType() == typeof(long))
-                return (T)Enum.ToObject(t, (long)Value);
+                return TR.Exit((T)Enum.ToObject(t, (long)Value));
             if (ti.GetEnumUnderlyingType() == typeof(sbyte))
-                return (T)Enum.ToObject(t, (sbyte)Value);
+                return TR.Exit((T)Enum.ToObject(t, (sbyte)Value));
             if (ti.GetEnumUnderlyingType() == typeof(short))
-                return (T)Enum.ToObject(t, (short)Value);
+                return TR.Exit((T)Enum.ToObject(t, (short)Value));
             if (ti.GetEnumUnderlyingType() == typeof(uint))
-                return (T)Enum.ToObject(t, (uint)Value);
+                return TR.Exit((T)Enum.ToObject(t, (uint)Value));
             if (ti.GetEnumUnderlyingType() == typeof(ulong))
-                return (T)Enum.ToObject(t, (ulong)Value);
+                return TR.Exit((T)Enum.ToObject(t, (ulong)Value));
             if (ti.GetEnumUnderlyingType() == typeof(ushort))
-                return (T)Enum.ToObject(t, (ushort)Value);
+                return TR.Exit((T)Enum.ToObject(t, (ushort)Value));
+            TR.Exit();
             throw new InvalidCastException();
         }
 
         public override double AsNumber()
         {
-            return Value;
+            TR.Enter();
+            return TR.Exit(Value);
         }
 
         public override string AsString()
         {
-            return Value.ToString();
+            TR.Enter();
+            return TR.Exit(Value.ToString());
         }
 
         public override bool CanConvertTo(Type type)
         {
+            TR.Enter();
             if (type == typeof(bool))
-                return true;
+                return TR.Exit(true);
             if (type == typeof(double))
-                return true;
+                return TR.Exit(true);
             if (type == typeof(string))
-                return true;
+                return TR.Exit(true);
             TypeInfo ti = type.GetTypeInfo();
             if (ti.IsEnum && Enum.IsDefined(type, Convert.ChangeType(Value, ti.GetEnumUnderlyingType())))
-                return true;
-            return false;
+                return TR.Exit(true);
+            return TR.Exit(false);
         }
 
         internal new static JNumber Parse(TextReader reader)
         {
+            TR.Enter();
             SkipSpace(reader);
             StringBuilder sb = new StringBuilder();
             while (true)
@@ -87,19 +100,24 @@ namespace Neo.IO.Json
                     break;
                 }
             }
-            return new JNumber(double.Parse(sb.ToString()));
+            return TR.Exit(new JNumber(double.Parse(sb.ToString())));
         }
 
         public override string ToString()
         {
-            return Value.ToString();
+            TR.Enter();
+            return TR.Exit(Value.ToString());
         }
 
         public DateTime ToTimestamp()
         {
+            TR.Enter();
             if (Value < 0 || Value > ulong.MaxValue)
+            {
+                TR.Exit();
                 throw new InvalidCastException();
-            return ((ulong)Value).ToDateTime();
+            }
+            return TR.Exit(((ulong)Value).ToDateTime());
         }
     }
 }

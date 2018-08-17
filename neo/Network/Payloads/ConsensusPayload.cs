@@ -6,6 +6,7 @@ using Neo.SmartContract;
 using Neo.VM;
 using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Network.Payloads
 {
@@ -51,58 +52,79 @@ namespace Neo.Network.Payloads
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             ((IVerifiable)this).DeserializeUnsigned(reader);
-            if (reader.ReadByte() != 1) throw new FormatException();
+            if (reader.ReadByte() != 1)
+            {
+                TR.Exit();
+                throw new FormatException();
+            }
             Script = reader.ReadSerializable<Witness>();
+            TR.Exit();
         }
 
         void IVerifiable.DeserializeUnsigned(BinaryReader reader)
         {
+            TR.Enter();
             Version = reader.ReadUInt32();
             PrevHash = reader.ReadSerializable<UInt256>();
             BlockIndex = reader.ReadUInt32();
             ValidatorIndex = reader.ReadUInt16();
             Timestamp = reader.ReadUInt32();
             Data = reader.ReadVarBytes();
+            TR.Exit();
         }
 
         byte[] IScriptContainer.GetMessage()
         {
-            return this.GetHashData();
+            TR.Enter();
+            return TR.Exit(this.GetHashData());
         }
 
         UInt160[] IVerifiable.GetScriptHashesForVerifying()
         {
+            TR.Enter();
             if (Blockchain.Default == null)
+            {
+                TR.Exit();
                 throw new InvalidOperationException();
+            }
             ECPoint[] validators = Blockchain.Default.GetValidators();
             if (validators.Length <= ValidatorIndex)
+            {
+                TR.Exit();
                 throw new InvalidOperationException();
-            return new[] { Contract.CreateSignatureRedeemScript(validators[ValidatorIndex]).ToScriptHash() };
+            }
+            return TR.Exit(new[] { Contract.CreateSignatureRedeemScript(validators[ValidatorIndex]).ToScriptHash() });
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             ((IVerifiable)this).SerializeUnsigned(writer);
             writer.Write((byte)1); writer.Write(Script);
+            TR.Exit();
         }
 
         void IVerifiable.SerializeUnsigned(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(Version);
             writer.Write(PrevHash);
             writer.Write(BlockIndex);
             writer.Write(ValidatorIndex);
             writer.Write(Timestamp);
             writer.WriteVarBytes(Data);
+            TR.Exit();
         }
 
         public bool Verify()
         {
-            if (Blockchain.Default == null) return false;
+            TR.Enter();
+            if (Blockchain.Default == null) return TR.Exit(false);
             if (BlockIndex <= Blockchain.Default.Height)
-                return false;
-            return this.VerifyScripts();
+                return TR.Exit(false);
+            return TR.Exit(this.VerifyScripts());
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Neo.Core;
 using Neo.VM;
 using System.Collections.Generic;
+using DbgViewTR;
 
 namespace Neo.SmartContract.Iterators
 {
@@ -10,27 +11,34 @@ namespace Neo.SmartContract.Iterators
 
         public StorageIterator(IEnumerator<KeyValuePair<StorageKey, StorageItem>> enumerator)
         {
+            TR.Enter();
             this.enumerator = enumerator;
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             enumerator.Dispose();
+            TR.Exit();
         }
 
         public StackItem Key()
         {
-            return enumerator.Current.Key.Key;
+            TR.Enter();
+            return TR.Exit(enumerator.Current.Key.Key);
         }
 
         public bool Next()
         {
-            return enumerator.MoveNext();
+            TR.Enter();
+            return TR.Exit(enumerator.MoveNext());
         }
 
         public StackItem Value()
         {
-            return enumerator.Current.Value.Value;
+            TR.Enter();
+            return TR.Exit(enumerator.Current.Value.Value);
         }
     }
 }

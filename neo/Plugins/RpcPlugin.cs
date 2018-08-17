@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Neo.IO.Json;
 using System.Collections.Generic;
+using DbgViewTR;
 
 namespace Neo.Plugins
 {
@@ -12,7 +13,9 @@ namespace Neo.Plugins
 
         protected RpcPlugin()
         {
+            TR.Enter();
             instances.Add(this);
+            TR.Exit();
         }
 
         internal protected virtual JObject OnProcess(HttpContext context, string method, JArray _params) => null;

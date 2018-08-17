@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using DbgViewTR;
 
 namespace Neo.Plugins
 {
@@ -15,13 +16,20 @@ namespace Neo.Plugins
 
         protected Plugin()
         {
+            TR.Enter();
             instances.Add(this);
+            TR.Exit();
         }
 
         static Plugin()
         {
+            TR.Enter();
             string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Plugins");
-            if (!Directory.Exists(path)) return;
+            if (!Directory.Exists(path))
+            {
+                TR.Exit();
+                return;
+            }
             foreach (string filename in Directory.EnumerateFiles(path, "*.dll", SearchOption.TopDirectoryOnly))
             {
                 Assembly assembly = Assembly.LoadFile(filename);
@@ -34,6 +42,7 @@ namespace Neo.Plugins
                     constructor.Invoke(null);
                 }
             }
+            TR.Exit();
         }
     }
 }

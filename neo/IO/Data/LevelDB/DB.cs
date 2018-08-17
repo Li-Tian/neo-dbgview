@@ -1,4 +1,5 @@
 ﻿using System;
+using DbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -13,27 +14,34 @@ namespace Neo.IO.Data.LevelDB
 
         private DB(IntPtr handle)
         {
+            TR.Enter();
             this.handle = handle;
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             if (handle != IntPtr.Zero)
             {
                 Native.leveldb_close(handle);
                 handle = IntPtr.Zero;
             }
+            TR.Exit();
         }
 
         public void Delete(WriteOptions options, Slice key)
         {
+            TR.Enter();
             IntPtr error;
             Native.leveldb_delete(handle, options.handle, key.buffer, (UIntPtr)key.buffer.Length, out error);
             NativeHelper.CheckError(error);
+            TR.Exit();
         }
 
         public Slice Get(ReadOptions options, Slice key)
         {
+            TR.Enter();
             UIntPtr length;
             IntPtr error;
             IntPtr value = Native.leveldb_get(handle, options.handle, key.buffer, (UIntPtr)key.buffer.Length, out length, out error);
@@ -41,8 +49,11 @@ namespace Neo.IO.Data.LevelDB
             {
                 NativeHelper.CheckError(error);
                 if (value == IntPtr.Zero)
+                {
+                    TR.Exit();
                     throw new LevelDBException("not found");
-                return new Slice(value, length);
+                }
+                return TR.Exit(new Slice(value, length));
             }
             finally
             {
@@ -52,36 +63,43 @@ namespace Neo.IO.Data.LevelDB
 
         public Snapshot GetSnapshot()
         {
-            return new Snapshot(handle);
+            TR.Enter();
+            return TR.Exit(new Snapshot(handle));
         }
 
         public Iterator NewIterator(ReadOptions options)
         {
-            return new Iterator(Native.leveldb_create_iterator(handle, options.handle));
+            TR.Enter();
+            return TR.Exit(new Iterator(Native.leveldb_create_iterator(handle, options.handle)));
         }
 
         public static DB Open(string name)
         {
-            return Open(name, Options.Default);
+            TR.Enter();
+            return TR.Exit(Open(name, Options.Default));
         }
 
         public static DB Open(string name, Options options)
         {
+            TR.Enter();
             IntPtr error;
             IntPtr handle = Native.leveldb_open(options.handle, name, out error);
             NativeHelper.CheckError(error);
-            return new DB(handle);
+            return TR.Exit(new DB(handle));
         }
 
         public void Put(WriteOptions options, Slice key, Slice value)
         {
+            TR.Enter();
             IntPtr error;
             Native.leveldb_put(handle, options.handle, key.buffer, (UIntPtr)key.buffer.Length, value.buffer, (UIntPtr)value.buffer.Length, out error);
             NativeHelper.CheckError(error);
+            TR.Exit();
         }
 
         public bool TryGet(ReadOptions options, Slice key, out Slice value)
         {
+            TR.Enter();
             UIntPtr length;
             IntPtr error;
             IntPtr v = Native.leveldb_get(handle, options.handle, key.buffer, (UIntPtr)key.buffer.Length, out length, out error);
@@ -89,16 +107,16 @@ namespace Neo.IO.Data.LevelDB
             {
                 Native.leveldb_free(error);
                 value = default(Slice);
-                return false;
+                return TR.Exit(false);
             }
             if (v == IntPtr.Zero)
             {
                 value = default(Slice);
-                return false;
+                return TR.Exit(false);
             }
             value = new Slice(v, length);
             Native.leveldb_free(v);
-            return true;
+            return TR.Exit(true);
         }
 
         public void Write(WriteOptions options, WriteBatch write_batch)
@@ -107,6 +125,7 @@ namespace Neo.IO.Data.LevelDB
             // When calling DB.Write(), it will throw LevelDBException sometimes.
             // But when you try to catch the exception, the bug disappears.
             // We shall remove the "try...catch" clause when Microsoft fix the bug.
+            TR.Enter();
             byte retry = 0;
             while (true)
             {
@@ -123,6 +142,7 @@ namespace Neo.IO.Data.LevelDB
                     System.IO.File.AppendAllText("leveldb.log", ex.Message + "\r\n");
                 }
             }
+            TR.Exit();
         }
     }
 }

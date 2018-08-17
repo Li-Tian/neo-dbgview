@@ -1,6 +1,7 @@
 ﻿using Neo.IO.Json;
 using Neo.Wallets;
 using System;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.NEP6
 {
@@ -17,50 +18,66 @@ namespace Neo.Implementations.Wallets.NEP6
         public NEP6Account(NEP6Wallet wallet, UInt160 scriptHash, string nep2key = null)
             : base(scriptHash)
         {
+            TR.Enter();
             this.wallet = wallet;
             this.nep2key = nep2key;
+            TR.Exit();
         }
 
         public NEP6Account(NEP6Wallet wallet, UInt160 scriptHash, KeyPair key, string password)
             : this(wallet, scriptHash, key.Export(password, wallet.Scrypt.N, wallet.Scrypt.R, wallet.Scrypt.P))
         {
+            TR.Enter();
             this.key = key;
+            TR.Exit();
         }
 
         public static NEP6Account FromJson(JObject json, NEP6Wallet wallet)
         {
-            return new NEP6Account(wallet, Wallet.ToScriptHash(json["address"].AsString()), json["key"]?.AsString())
+            TR.Enter();
+            return TR.Exit(new NEP6Account(wallet, Wallet.ToScriptHash(json["address"].AsString()), json["key"]?.AsString())
             {
                 Label = json["label"]?.AsString(),
                 IsDefault = json["isDefault"].AsBoolean(),
                 Lock = json["lock"].AsBoolean(),
                 Contract = NEP6Contract.FromJson(json["contract"]),
                 Extra = json["extra"]
-            };
+            });
         }
 
         public override KeyPair GetKey()
         {
-            if (nep2key == null) return null;
+            TR.Enter();
+            if (nep2key == null)
+            {
+                TR.Exit();
+                return null;
+            }
             if (key == null)
             {
                 key = wallet.DecryptKey(nep2key);
             }
-            return key;
+            return TR.Exit(key);
         }
 
         public KeyPair GetKey(string password)
         {
-            if (nep2key == null) return null;
+            TR.Enter();
+            if (nep2key == null)
+            {
+                TR.Exit();
+                return null;
+            }
             if (key == null)
             {
                 key = new KeyPair(Wallet.GetPrivateKeyFromNEP2(nep2key, password, wallet.Scrypt.N, wallet.Scrypt.R, wallet.Scrypt.P));
             }
-            return key;
+            return TR.Exit(key);
         }
 
         public JObject ToJson()
         {
+            TR.Enter();
             JObject account = new JObject();
             account["address"] = Wallet.ToAddress(ScriptHash);
             account["label"] = Label;
@@ -69,19 +86,20 @@ namespace Neo.Implementations.Wallets.NEP6
             account["key"] = nep2key;
             account["contract"] = ((NEP6Contract)Contract)?.ToJson();
             account["extra"] = Extra;
-            return account;
+            return TR.Exit(account);
         }
 
         public bool VerifyPassword(string password)
         {
+            TR.Enter();
             try
             {
                 Wallet.GetPrivateKeyFromNEP2(nep2key, password, wallet.Scrypt.N, wallet.Scrypt.R, wallet.Scrypt.P);
-                return true;
+                return TR.Exit(true);
             }
             catch (FormatException)
             {
-                return false;
+                return TR.Exit(false);
             }
         }
     }

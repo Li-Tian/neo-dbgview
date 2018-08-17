@@ -1,4 +1,5 @@
 ﻿using Neo.VM;
+using DbgViewTR;
 
 namespace Neo.SmartContract.Enumerators
 {
@@ -9,26 +10,32 @@ namespace Neo.SmartContract.Enumerators
 
         public ConcatenatedEnumerator(IEnumerator first, IEnumerator second)
         {
+            TR.Enter();
             this.current = this.first = first;
             this.second = second;
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             first.Dispose();
             second.Dispose();
+            TR.Exit();
         }
 
         public bool Next()
         {
-            if (current.Next()) return true;
+            TR.Enter();
+            if (current.Next()) return TR.Exit(true);
             current = second;
-            return current.Next();
+            return TR.Exit(current.Next());
         }
 
         public StackItem Value()
         {
-            return current.Value();
+            TR.Enter();
+            return TR.Exit(current.Value());
         }
     }
 }

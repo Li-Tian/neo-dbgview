@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -14,59 +15,69 @@ namespace Neo.IO.Data.LevelDB
 
         public SliceBuilder Add(byte value)
         {
+            TR.Enter();
             data.Add(value);
-            return this;
+            return TR.Exit(this);
         }
 
         public SliceBuilder Add(ushort value)
         {
+            TR.Enter();
             data.AddRange(BitConverter.GetBytes(value));
-            return this;
+            return TR.Exit(this);
         }
 
         public SliceBuilder Add(uint value)
         {
+            TR.Enter();
             data.AddRange(BitConverter.GetBytes(value));
-            return this;
+            return TR.Exit(this);
         }
 
         public SliceBuilder Add(long value)
         {
+            TR.Enter();
             data.AddRange(BitConverter.GetBytes(value));
-            return this;
+            return TR.Exit(this);
         }
 
         public SliceBuilder Add(IEnumerable<byte> value)
         {
+            TR.Enter();
             data.AddRange(value);
-            return this;
+            return TR.Exit(this);
         }
 
         public SliceBuilder Add(string value)
         {
+            TR.Enter();
             data.AddRange(Encoding.UTF8.GetBytes(value));
-            return this;
+            return TR.Exit(this);
         }
 
         public SliceBuilder Add(ISerializable value)
         {
+            TR.Enter();
             data.AddRange(value.ToArray());
-            return this;
+            return TR.Exit(this);
         }
 
         public static SliceBuilder Begin()
         {
-            return new SliceBuilder();
+            TR.Enter();
+            return TR.Exit(new SliceBuilder());
         }
 
         public static SliceBuilder Begin(byte prefix)
         {
-            return new SliceBuilder().Add(prefix);
+            TR.Enter();
+            return TR.Exit(new SliceBuilder().Add(prefix));
         }
 
         public static implicit operator Slice(SliceBuilder value)
         {
-            return value.data.ToArray();
+            TR.Enter();
+            return TR.Exit(value.data.ToArray());
         }
     }
 }

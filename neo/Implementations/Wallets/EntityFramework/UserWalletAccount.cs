@@ -1,4 +1,5 @@
 ﻿using Neo.Wallets;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {
@@ -15,7 +16,8 @@ namespace Neo.Implementations.Wallets.EntityFramework
 
         public override KeyPair GetKey()
         {
-            return Key;
+            TR.Enter();
+            return TR.Exit(Key);
         }
     }
 }

@@ -4,6 +4,7 @@ using Neo.VM;
 using System;
 using System.IO;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {
@@ -17,9 +18,11 @@ namespace Neo.Implementations.Wallets.EntityFramework
         /// <param name="reader">数据来源</param>
         public void Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             reader.ReadSerializable<UInt160>();
             ParameterList = reader.ReadVarBytes().Select(p => (ContractParameterType)p).ToArray();
             Script = reader.ReadVarBytes();
+            TR.Exit();
         }
 
         /// <summary>
@@ -29,9 +32,10 @@ namespace Neo.Implementations.Wallets.EntityFramework
         /// <returns>返回比较的结果</returns>
         public bool Equals(VerificationContract other)
         {
-            if (ReferenceEquals(this, other)) return true;
-            if (ReferenceEquals(null, other)) return false;
-            return ScriptHash.Equals(other.ScriptHash);
+            TR.Enter();
+            if (ReferenceEquals(this, other)) return TR.Exit(true);
+            if (ReferenceEquals(null, other)) return TR.Exit(false);
+            return TR.Exit(ScriptHash.Equals(other.ScriptHash));
         }
 
         /// <summary>
@@ -41,7 +45,8 @@ namespace Neo.Implementations.Wallets.EntityFramework
         /// <returns>返回比较的结果</returns>
         public override bool Equals(object obj)
         {
-            return Equals(obj as VerificationContract);
+            TR.Enter();
+            return TR.Exit(Equals(obj as VerificationContract));
         }
 
         /// <summary>
@@ -50,7 +55,8 @@ namespace Neo.Implementations.Wallets.EntityFramework
         /// <returns>返回HashCode</returns>
         public override int GetHashCode()
         {
-            return ScriptHash.GetHashCode();
+            TR.Enter();
+            return TR.Exit(ScriptHash.GetHashCode());
         }
 
         /// <summary>
@@ -59,9 +65,11 @@ namespace Neo.Implementations.Wallets.EntityFramework
         /// <param name="writer">存放序列化后的结果</param>
         public void Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(new UInt160());
             writer.WriteVarBytes(ParameterList.Select(p => (byte)p).ToArray());
             writer.WriteVarBytes(Script);
+            TR.Exit();
         }
     }
 }

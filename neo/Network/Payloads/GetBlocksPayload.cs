@@ -1,5 +1,6 @@
 ﻿using Neo.IO;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.Network.Payloads
 {
@@ -12,23 +13,28 @@ namespace Neo.Network.Payloads
 
         public static GetBlocksPayload Create(UInt256 hash_start, UInt256 hash_stop = null)
         {
-            return new GetBlocksPayload
+            TR.Enter();
+            return TR.Exit(new GetBlocksPayload
             {
                 HashStart = new[] { hash_start },
                 HashStop = hash_stop ?? UInt256.Zero
-            };
+            });
         }
 
         void ISerializable.Deserialize(BinaryReader reader)
         {
+            TR.Enter();
             HashStart = reader.ReadSerializableArray<UInt256>(16);
             HashStop = reader.ReadSerializable<UInt256>();
+            TR.Exit();
         }
 
         void ISerializable.Serialize(BinaryWriter writer)
         {
+            TR.Enter();
             writer.Write(HashStart);
             writer.Write(HashStop);
+            TR.Exit();
         }
     }
 }

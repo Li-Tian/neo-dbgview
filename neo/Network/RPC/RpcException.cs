@@ -1,4 +1,5 @@
 ﻿using System;
+using DbgViewTR;
 
 namespace Neo.Network.RPC
 {
@@ -6,7 +7,9 @@ namespace Neo.Network.RPC
     {
         public RpcException(int code, string message) : base(message)
         {
+            TR.Enter();
             HResult = code;
+            TR.Exit();
         }
     }
 }

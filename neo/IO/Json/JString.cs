@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
+using DbgViewTR;
 
 namespace Neo.IO.Json
 {
@@ -13,13 +14,19 @@ namespace Neo.IO.Json
 
         public JString(string value)
         {
+            TR.Enter();
             if (value == null)
+            {
+                TR.Exit();
                 throw new ArgumentNullException();
+            }
             this.Value = value;
+            TR.Exit();
         }
 
         public override bool AsBoolean()
         {
+            TR.Enter();
             switch (Value.ToLower())
             {
                 case "0":
@@ -28,65 +35,80 @@ namespace Neo.IO.Json
                 case "n":
                 case "no":
                 case "off":
-                    return false;
+                    return TR.Exit(false);
                 default:
-                    return true;
+                    return TR.Exit(true);
             }
         }
 
         public override T AsEnum<T>(bool ignoreCase = false)
         {
+            TR.Enter();
             try
             {
-                return (T)Enum.Parse(typeof(T), Value, ignoreCase);
+                return TR.Exit((T)Enum.Parse(typeof(T), Value, ignoreCase));
             }
             catch
             {
+                TR.Exit();
                 throw new InvalidCastException();
             }
         }
 
         public override double AsNumber()
         {
+            TR.Enter();
             try
             {
-                return double.Parse(Value);
+                return TR.Exit(double.Parse(Value));
             }
             catch
             {
+                TR.Exit();
                 throw new InvalidCastException();
             }
         }
 
         public override string AsString()
         {
-            return Value;
+            TR.Enter();
+            return TR.Exit(Value);
         }
 
         public override bool CanConvertTo(Type type)
         {
+            TR.Enter();
             if (type == typeof(bool))
-                return true;
+                return TR.Exit(true);
             if (type.GetTypeInfo().IsEnum && Enum.IsDefined(type, Value))
-                return true;
+                return TR.Exit(true);
             if (type == typeof(double))
-                return true;
+                return TR.Exit(true);
             if (type == typeof(string))
-                return true;
-            return false;
+                return TR.Exit(true);
+            return TR.Exit(false);
         }
 
         internal new static JString Parse(TextReader reader)
         {
+            TR.Enter();
             SkipSpace(reader);
             char[] buffer = new char[4];
             char firstChar = (char)reader.Read();
-            if (firstChar != '\"' && firstChar != '\'') throw new FormatException();
+            if (firstChar != '\"' && firstChar != '\'')
+            {
+                TR.Exit();
+                throw new FormatException();
+            }
             StringBuilder sb = new StringBuilder();
             while (true)
             {
                 char c = (char)reader.Read();
-                if (c == 65535) throw new FormatException();
+                if (c == 65535)
+                {
+                    TR.Exit();
+                    throw new FormatException();
+                }
                 if (c == firstChar) break;
                 if (c == '\\')
                 {
@@ -99,12 +121,13 @@ namespace Neo.IO.Json
                 }
                 sb.Append(c);
             }
-            return new JString(sb.ToString());
+            return TR.Exit(new JString(sb.ToString()));
         }
 
         public override string ToString()
         {
-            return $"\"{JavaScriptEncoder.Default.Encode(Value)}\"";
+            TR.Enter();
+            return TR.Exit($"\"{JavaScriptEncoder.Default.Encode(Value)}\"");
         }
     }
 }

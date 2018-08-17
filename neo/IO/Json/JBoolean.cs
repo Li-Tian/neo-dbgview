@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using DbgViewTR;
 
 namespace Neo.IO.Json
 {
@@ -9,30 +10,36 @@ namespace Neo.IO.Json
 
         public JBoolean(bool value = false)
         {
+            TR.Enter();
             this.Value = value;
+            TR.Exit();
         }
 
         public override bool AsBoolean()
         {
-            return Value;
+            TR.Enter();
+            return TR.Exit(Value);
         }
 
         public override string AsString()
         {
-            return Value.ToString().ToLower();
+            TR.Enter();
+            return TR.Exit(Value.ToString().ToLower());
         }
 
         public override bool CanConvertTo(Type type)
         {
+            TR.Enter();
             if (type == typeof(bool))
-                return true;
+                return TR.Exit(true);
             if (type == typeof(string))
-                return true;
-            return false;
+                return TR.Exit(true);
+            return TR.Exit(false);
         }
 
         internal new static JBoolean Parse(TextReader reader)
         {
+            TR.Enter();
             SkipSpace(reader);
             char firstChar = (char)reader.Read();
             if (firstChar == 't')
@@ -42,7 +49,7 @@ namespace Neo.IO.Json
                 int c4 = reader.Read();
                 if (c2 == 'r' && c3 == 'u' && c4 == 'e')
                 {
-                    return new JBoolean(true);
+                    return TR.Exit(new JBoolean(true));
                 }
             }
             else if (firstChar == 'f')
@@ -53,15 +60,17 @@ namespace Neo.IO.Json
                 int c5 = reader.Read();
                 if (c2 == 'a' && c3 == 'l' && c4 == 's' && c5 == 'e')
                 {
-                    return new JBoolean(false);
+                    return TR.Exit(new JBoolean(false));
                 }
             }
+            TR.Exit();
             throw new FormatException();
         }
 
         public override string ToString()
         {
-            return Value.ToString().ToLower();
+            TR.Enter();
+            return TR.Exit(Value.ToString().ToLower());
         }
     }
 }

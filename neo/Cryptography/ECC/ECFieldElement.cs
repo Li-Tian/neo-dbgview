@@ -44,7 +44,7 @@ namespace Neo.Cryptography.ECC
 
         public bool Equals(ECFieldElement other)
         {
-            return TR.Exit(Value.Equals(other.Value));
+            return TR.Log(Value.Equals(other.Value));
         }
 
         private static BigInteger[] FastLucasSequence(BigInteger p, BigInteger P, BigInteger Q, BigInteger k)

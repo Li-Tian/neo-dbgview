@@ -8,6 +8,7 @@ using System.Linq;
 using System.Numerics;
 using VMArray = Neo.VM.Types.Array;
 using VMBoolean = Neo.VM.Types.Boolean;
+using DbgViewTR;
 
 namespace Neo.VM
 {
@@ -15,60 +16,68 @@ namespace Neo.VM
     {
         public static ScriptBuilder Emit(this ScriptBuilder sb, params OpCode[] ops)
         {
+            TR.Enter();
             foreach (OpCode op in ops)
                 sb.Emit(op);
-            return sb;
+            return TR.Exit(sb);
         }
 
         public static ScriptBuilder EmitAppCall(this ScriptBuilder sb, UInt160 scriptHash, bool useTailCall = false)
         {
-            return sb.EmitAppCall(scriptHash.ToArray(), useTailCall);
+            TR.Enter();
+            return TR.Exit(sb.EmitAppCall(scriptHash.ToArray(), useTailCall));
         }
 
         public static ScriptBuilder EmitAppCall(this ScriptBuilder sb, UInt160 scriptHash, params ContractParameter[] parameters)
         {
+            TR.Enter();
             for (int i = parameters.Length - 1; i >= 0; i--)
                 sb.EmitPush(parameters[i]);
-            return sb.EmitAppCall(scriptHash);
+            return TR.Exit(sb.EmitAppCall(scriptHash));
         }
 
         public static ScriptBuilder EmitAppCall(this ScriptBuilder sb, UInt160 scriptHash, string operation)
         {
+            TR.Enter();
             sb.EmitPush(false);
             sb.EmitPush(operation);
             sb.EmitAppCall(scriptHash);
-            return sb;
+            return TR.Exit(sb);
         }
 
         public static ScriptBuilder EmitAppCall(this ScriptBuilder sb, UInt160 scriptHash, string operation, params ContractParameter[] args)
         {
+            TR.Enter();
             for (int i = args.Length - 1; i >= 0; i--)
                 sb.EmitPush(args[i]);
             sb.EmitPush(args.Length);
             sb.Emit(OpCode.PACK);
             sb.EmitPush(operation);
             sb.EmitAppCall(scriptHash);
-            return sb;
+            return TR.Exit(sb);
         }
 
         public static ScriptBuilder EmitAppCall(this ScriptBuilder sb, UInt160 scriptHash, string operation, params object[] args)
         {
+            TR.Enter();
             for (int i = args.Length - 1; i >= 0; i--)
                 sb.EmitPush(args[i]);
             sb.EmitPush(args.Length);
             sb.Emit(OpCode.PACK);
             sb.EmitPush(operation);
             sb.EmitAppCall(scriptHash);
-            return sb;
+            return TR.Exit(sb);
         }
 
         public static ScriptBuilder EmitPush(this ScriptBuilder sb, ISerializable data)
         {
-            return sb.EmitPush(data.ToArray());
+            TR.Enter();
+            return TR.Exit(sb.EmitPush(data.ToArray()));
         }
 
         public static ScriptBuilder EmitPush(this ScriptBuilder sb, ContractParameter parameter)
         {
+            TR.Enter();
             switch (parameter.Type)
             {
                 case ContractParameterType.Signature:
@@ -106,13 +115,15 @@ namespace Neo.VM
                     }
                     break;
                 default:
-                    throw new ArgumentException();
+                        TR.Exit();
+                        throw new ArgumentException();
             }
-            return sb;
+            return TR.Exit(sb);
         }
 
         public static ScriptBuilder EmitPush(this ScriptBuilder sb, object obj)
         {
+            TR.Enter();
             switch (obj)
             {
                 case bool data:
@@ -158,52 +169,56 @@ namespace Neo.VM
                     sb.EmitPush(BigInteger.Parse(data.ToString("d")));
                     break;
                 default:
+                    TR.Exit();
                     throw new ArgumentException();
             }
-            return sb;
+            return TR.Exit(sb);
         }
 
         public static ScriptBuilder EmitSysCall(this ScriptBuilder sb, string api, params object[] args)
         {
+            TR.Exit();
             for (int i = args.Length - 1; i >= 0; i--)
                 EmitPush(sb, args[i]);
-            return sb.EmitSysCall(api);
+            return TR.Exit(sb.EmitSysCall(api));
         }
 
         public static ContractParameter ToParameter(this StackItem item)
         {
+            TR.Enter();
             switch (item)
             {
                 case VMArray array:
-                    return new ContractParameter
+                    return TR.Exit(new ContractParameter
                     {
                         Type = ContractParameterType.Array,
                         Value = array.Select(p => p.ToParameter()).ToArray()
-                    };
+                    });
                 case VMBoolean _:
-                    return new ContractParameter
+                    return TR.Exit(new ContractParameter
                     {
                         Type = ContractParameterType.Boolean,
                         Value = item.GetBoolean()
-                    };
+                    });
                 case ByteArray _:
-                    return new ContractParameter
+                    return TR.Exit(new ContractParameter
                     {
                         Type = ContractParameterType.ByteArray,
                         Value = item.GetByteArray()
-                    };
+                    });
                 case Integer _:
-                    return new ContractParameter
+                    return TR.Exit(new ContractParameter
                     {
                         Type = ContractParameterType.Integer,
                         Value = item.GetBigInteger()
-                    };
+                    });
                 case InteropInterface _:
-                    return new ContractParameter
+                    return TR.Exit(new ContractParameter
                     {
                         Type = ContractParameterType.InteropInterface
-                    };
+                    });
                 default:
+                    TR.Exit();
                     throw new ArgumentException();
             }
         }
