@@ -2,6 +2,7 @@
 using Neo.SmartContract;
 using Neo.VM;
 using System;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -13,6 +14,7 @@ namespace Neo.Wallets
 
         public AssetDescriptor(UIntBase asset_id)
         {
+            TR.Enter();
             if (asset_id is UInt160 asset_id_160)
             {
                 byte[] script;
@@ -23,7 +25,11 @@ namespace Neo.Wallets
                     script = sb.ToArray();
                 }
                 ApplicationEngine engine = ApplicationEngine.Run(script);
-                if (engine.State.HasFlag(VMState.FAULT)) throw new ArgumentException();
+                if (engine.State.HasFlag(VMState.FAULT))
+                {
+                    TR.Exit();
+                    throw new ArgumentException();
+                }
                 this.AssetId = asset_id;
                 this.AssetName = engine.EvaluationStack.Pop().GetString();
                 this.Decimals = (byte)engine.EvaluationStack.Pop().GetBigInteger();
@@ -35,11 +41,13 @@ namespace Neo.Wallets
                 this.AssetName = state.GetName();
                 this.Decimals = state.Precision;
             }
+            TR.Exit();
         }
 
         public override string ToString()
         {
-            return AssetName;
+            TR.Enter();
+            return TR.Exit(AssetName);
         }
     }
 }

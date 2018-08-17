@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -17,8 +18,12 @@ namespace Neo.Wallets
 
         public KeyPair(byte[] privateKey)
         {
+            TR.Enter();
             if (privateKey.Length != 32 && privateKey.Length != 96 && privateKey.Length != 104)
+            {
+                TR.Exit();
                 throw new ArgumentException();
+            }
             this.PrivateKey = new byte[32];
             Buffer.BlockCopy(privateKey, privateKey.Length - 32, PrivateKey, 0, 32);
             if (privateKey.Length == 32)
@@ -29,6 +34,7 @@ namespace Neo.Wallets
             {
                 this.PublicKey = Cryptography.ECC.ECPoint.FromBytes(privateKey, Cryptography.ECC.ECCurve.Secp256r1);
             }
+            TR.Exit();
 #if NET47
             ProtectedMemory.Protect(PrivateKey, MemoryProtectionScope.SameProcess);
 #endif
@@ -36,27 +42,31 @@ namespace Neo.Wallets
 
         public IDisposable Decrypt()
         {
+            TR.Enter();
 #if NET47
             return new ProtectedMemoryContext(PrivateKey, MemoryProtectionScope.SameProcess);
 #else
-            return new System.IO.MemoryStream(0);
+            return TR.Exit(new System.IO.MemoryStream(0));
 #endif
         }
 
         public bool Equals(KeyPair other)
         {
-            if (ReferenceEquals(this, other)) return true;
-            if (ReferenceEquals(null, other)) return false;
-            return PublicKey.Equals(other.PublicKey);
+            TR.Enter();
+            if (ReferenceEquals(this, other)) return TR.Exit(true);
+            if (ReferenceEquals(null, other)) return TR.Exit(false);
+            return TR.Exit(PublicKey.Equals(other.PublicKey));
         }
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as KeyPair);
+            TR.Enter();
+            return TR.Exit(Equals(obj as KeyPair));
         }
 
         public string Export()
         {
+            TR.Enter();
             using (Decrypt())
             {
                 byte[] data = new byte[34];
@@ -65,12 +75,13 @@ namespace Neo.Wallets
                 data[33] = 0x01;
                 string wif = data.Base58CheckEncode();
                 Array.Clear(data, 0, data.Length);
-                return wif;
+                return TR.Exit(wif);
             }
         }
 
         public string Export(string passphrase, int N = 16384, int r = 8, int p = 8)
         {
+            TR.Enter();
             using (Decrypt())
             {
                 UInt160 script_hash = Contract.CreateSignatureRedeemScript(PublicKey).ToScriptHash();
@@ -86,24 +97,31 @@ namespace Neo.Wallets
                 buffer[2] = 0xe0;
                 Buffer.BlockCopy(addresshash, 0, buffer, 3, addresshash.Length);
                 Buffer.BlockCopy(encryptedkey, 0, buffer, 7, encryptedkey.Length);
-                return buffer.Base58CheckEncode();
+                return TR.Exit(buffer.Base58CheckEncode());
             }
         }
 
         public override int GetHashCode()
         {
-            return PublicKey.GetHashCode();
+            TR.Enter();
+            return TR.Exit(PublicKey.GetHashCode());
         }
 
         public override string ToString()
         {
-            return PublicKey.ToString();
+            TR.Enter();
+            return TR.Exit(PublicKey.ToString());
         }
 
         private static byte[] XOR(byte[] x, byte[] y)
         {
-            if (x.Length != y.Length) throw new ArgumentException();
-            return x.Zip(y, (a, b) => (byte)(a ^ b)).ToArray();
+            TR.Enter();
+            if (x.Length != y.Length)
+            {
+                TR.Exit();
+                throw new ArgumentException();
+            }
+            return TR.Exit(x.Zip(y, (a, b) => (byte)(a ^ b)).ToArray());
         }
     }
 }

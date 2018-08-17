@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -36,6 +37,7 @@ namespace Neo.Wallets
 
         static WalletIndexer()
         {
+            TR.Enter();
             string path = Path.GetFullPath($"Index_{Settings.Default.Magic:X8}");
             Directory.CreateDirectory(path);
             db = DB.Open(path, new Options { CreateIfMissing = true });
@@ -84,30 +86,35 @@ namespace Neo.Wallets
                 Name = $"{nameof(WalletIndexer)}.{nameof(ProcessBlocks)}"
             };
             thread.Start();
+            TR.Exit();
         }
 
         public static IEnumerable<Coin> GetCoins(IEnumerable<UInt160> accounts)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 foreach (UInt160 account in accounts)
                     foreach (CoinReference reference in accounts_tracked[account])
-                        yield return coins_tracked[reference];
+                        yield return TR.Exit(coins_tracked[reference]);
             }
+            TR.Exit();
         }
 
         private static byte[] GetGroupId()
         {
+            TR.Enter();
             byte[] groupId = new byte[32];
             using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(groupId);
             }
-            return groupId;
+            return TR.Exit(groupId);
         }
 
         public static IEnumerable<UInt256> GetTransactions(IEnumerable<UInt160> accounts)
         {
+            TR.Enter();
             ReadOptions options = new ReadOptions { FillCache = false };
             using (options.Snapshot = db.GetSnapshot())
             {
@@ -115,12 +122,14 @@ namespace Neo.Wallets
                 foreach (UInt160 account in accounts)
                     results = results.Union(db.Find(options, SliceBuilder.Begin(DataEntryPrefix.ST_Transaction).Add(account), (k, v) => new UInt256(k.ToArray().Skip(21).ToArray())));
                 foreach (UInt256 hash in results)
-                    yield return hash;
+                    yield return TR.Exit(hash);
             }
+            TR.Exit();
         }
 
         private static void ProcessBlock(Block block, HashSet<UInt160> accounts, WriteBatch batch)
         {
+            TR.Enter();
             foreach (Transaction tx in block.Transactions)
             {
                 HashSet<UInt160> accounts_changed = new HashSet<UInt160>();
@@ -196,10 +205,12 @@ namespace Neo.Wallets
                     });
                 }
             }
+            TR.Exit();
         }
 
         private static void ProcessBlocks()
         {
+            TR.Enter();
             bool need_sleep = false;
             for (; ; )
             {
@@ -248,6 +259,7 @@ namespace Neo.Wallets
                 }
                 catch when (Blockchain.Default == null || Blockchain.Default.IsDisposed || db.IsDisposed)
                 {
+                    TR.Exit();
                     return;
                 }
             }
@@ -255,6 +267,7 @@ namespace Neo.Wallets
 
         public static void RebuildIndex()
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 WriteBatch batch = new WriteBatch();
@@ -282,10 +295,12 @@ namespace Neo.Wallets
                     batch.Delete(key);
                 db.Write(WriteOptions.Default, batch);
             }
+            TR.Exit();
         }
 
         public static void RegisterAccounts(IEnumerable<UInt160> accounts, uint height = 0)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 bool index_exists = indexes.TryGetValue(height, out HashSet<UInt160> index);
@@ -314,10 +329,12 @@ namespace Neo.Wallets
                     db.Write(WriteOptions.Default, batch);
                 }
             }
+            TR.Exit();
         }
 
         public static void UnregisterAccounts(IEnumerable<UInt160> accounts)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 WriteBatch batch = new WriteBatch();
@@ -357,6 +374,7 @@ namespace Neo.Wallets
                 }
                 db.Write(WriteOptions.Default, batch);
             }
+            TR.Exit();
         }
     }
 }

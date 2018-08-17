@@ -1,4 +1,5 @@
 ﻿using Neo.SmartContract;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -18,7 +19,9 @@ namespace Neo.Wallets
 
         protected WalletAccount(UInt160 scriptHash)
         {
+            TR.Enter();
             this.ScriptHash = scriptHash;
+            TR.Exit();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Neo.Core;
 using System;
+using DbgViewTR;
 
 namespace Neo.Wallets
 {
@@ -13,13 +14,15 @@ namespace Neo.Wallets
 
         public TransactionOutput ToTxOutput()
         {
+            TR.Enter();
             if (AssetId is UInt256 asset_id)
-                return new TransactionOutput
+                return TR.Exit(new TransactionOutput
                 {
                     AssetId = asset_id,
                     Value = Value.ToFixed8(),
                     ScriptHash = ScriptHash
-                };
+                });
+            TR.Exit();
             throw new NotSupportedException();
         }
     }
