@@ -65,11 +65,11 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     using (MemoryStream ms = new MemoryStream(v.ToArray(), false))
                     using (BinaryReader r = new BinaryReader(ms))
                     {
-                        return new
+                        return TR.Exit(new
                         {
                             Index = k.ToArray().ToUInt32(1),
                             Hashes = r.ReadSerializableArray<UInt256>()
-                        };
+                        });
                     }
                 }).OrderBy(p => p.Index).SelectMany(p => p.Hashes).ToArray())
                 {
@@ -131,10 +131,10 @@ namespace Neo.Implementations.Blockchains.LevelDB
             }
             lock (header_index)
             {
-                if (block.Index - 1 >= header_index.Count) return false;
+                if (block.Index - 1 >= header_index.Count) return TR.Exit(false);
                 if (block.Index == header_index.Count)
                 {
-                    if (VerifyBlocks && !block.Verify()) return false;
+                    if (VerifyBlocks && !block.Verify()) return TR.Exit(false);
                     WriteBatch batch = new WriteBatch();
                     OnAddHeader(block.Header, batch);
                     db.Write(WriteOptions.Default, batch);
@@ -147,7 +147,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
 
         public void AddBlockDirectly(Block block)
         {
-            TR.Exit();
+            TR.Enter();
             if (block.Index != Height + 1)
                 throw new InvalidOperationException();
             if (block.Index == header_index.Count)
@@ -228,20 +228,20 @@ namespace Neo.Implementations.Blockchains.LevelDB
 
         public override AccountState GetAccountState(UInt160 script_hash)
         {
-            TR.Log();
-            return db.TryGet<AccountState>(ReadOptions.Default, DataEntryPrefix.ST_Account, script_hash);
+            TR.Enter();
+            return TR.Exit(db.TryGet<AccountState>(ReadOptions.Default, DataEntryPrefix.ST_Account, script_hash));
         }
 
         public override AssetState GetAssetState(UInt256 asset_id)
         {
-            TR.Log();
-            return db.TryGet<AssetState>(ReadOptions.Default, DataEntryPrefix.ST_Asset, asset_id);
+            TR.Enter();
+            return TR.Exit(db.TryGet<AssetState>(ReadOptions.Default, DataEntryPrefix.ST_Asset, asset_id));
         }
 
         public override Block GetBlock(UInt256 hash)
         {
-            TR.Log();
-            return GetBlockInternal(ReadOptions.Default, hash);
+            TR.Enter();
+            return TR.Exit(GetBlockInternal(ReadOptions.Default, hash));
         }
 
         public override UInt256 GetBlockHash(uint height)
@@ -269,147 +269,162 @@ namespace Neo.Implementations.Blockchains.LevelDB
 
         public override ContractState GetContract(UInt160 hash)
         {
-            return db.TryGet<ContractState>(ReadOptions.Default, DataEntryPrefix.ST_Contract, hash);
+            TR.Enter();
+            return TR.Exit(db.TryGet<ContractState>(ReadOptions.Default, DataEntryPrefix.ST_Contract, hash));
         }
 
         public override IEnumerable<ValidatorState> GetEnrollments()
         {
+            TR.Enter();
             HashSet<ECPoint> sv = new HashSet<ECPoint>(StandbyValidators);
-            return db.Find<ValidatorState>(ReadOptions.Default, DataEntryPrefix.ST_Validator).Where(p => p.Registered || sv.Contains(p.PublicKey));
+            return TR.Exit(db.Find<ValidatorState>(ReadOptions.Default, DataEntryPrefix.ST_Validator).Where(p => p.Registered || sv.Contains(p.PublicKey)));
         }
 
         public override Header GetHeader(uint height)
         {
+            TR.Enter();
             UInt256 hash;
             lock (header_index)
             {
-                if (header_index.Count <= height) return null;
+                if (header_index.Count <= height) return TR.Exit((Header) null);
                 hash = header_index[(int)height];
             }
-            return GetHeader(hash);
+            return TR.Exit(GetHeader(hash));
         }
 
         public override Header GetHeader(UInt256 hash)
         {
+            TR.Enter();
             lock (header_cache)
             {
                 if (header_cache.TryGetValue(hash, out Header header))
-                    return header;
+                    return TR.Exit(header);
             }
             Slice value;
             if (!db.TryGet(ReadOptions.Default, SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(hash), out value))
-                return null;
-            return Header.FromTrimmedData(value.ToArray(), sizeof(long));
+                return TR.Exit((Header)null);
+            return TR.Exit(Header.FromTrimmedData(value.ToArray(), sizeof(long)));
         }
 
         public override Block GetNextBlock(UInt256 hash)
         {
-            return GetBlockInternal(ReadOptions.Default, GetNextBlockHash(hash));
+            TR.Enter();
+            return TR.Exit(GetBlockInternal(ReadOptions.Default, GetNextBlockHash(hash)));
         }
 
         public override UInt256 GetNextBlockHash(UInt256 hash)
         {
+            TR.Enter();
             Header header = GetHeader(hash);
-            if (header == null) return null;
+            if (header == null) return TR.Exit((UInt256) null);
             lock (header_index)
             {
                 if (header.Index + 1 >= header_index.Count)
-                    return null;
-                return header_index[(int)header.Index + 1];
+                    return TR.Exit((UInt256) null);
+                return TR.Exit(header_index[(int)header.Index + 1]);
             }
         }
 
         public override StorageItem GetStorageItem(StorageKey key)
         {
-            return db.TryGet<StorageItem>(ReadOptions.Default, DataEntryPrefix.ST_Storage, key);
+            TR.Enter();
+            return TR.Exit(db.TryGet<StorageItem>(ReadOptions.Default, DataEntryPrefix.ST_Storage, key));
         }
 
         public override long GetSysFeeAmount(UInt256 hash)
         {
+            TR.Enter();
             Slice value;
             if (!db.TryGet(ReadOptions.Default, SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(hash), out value))
-                return 0;
-            return value.ToArray().ToInt64(0);
+                return TR.Exit(0);
+            return TR.Exit(value.ToArray().ToInt64(0));
         }
 
         public override MetaDataCache<T> GetMetaData<T>()
         {
+            TR.Enter();
             Type t = typeof(T);
-            if (t == typeof(ValidatorsCountState)) return new DbMetaDataCache<T>(db, DataEntryPrefix.IX_ValidatorsCount);
-            throw new NotSupportedException();
+            if (t == typeof(ValidatorsCountState)) return TR.Exit(new DbMetaDataCache<T>(db, DataEntryPrefix.IX_ValidatorsCount));
+            TR.Exit(); throw new NotSupportedException();
         }
 
         public override DataCache<TKey, TValue> GetStates<TKey, TValue>()
         {
+            TR.Enter();
             Type t = typeof(TValue);
-            if (t == typeof(AccountState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Account);
-            if (t == typeof(UnspentCoinState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Coin);
-            if (t == typeof(SpentCoinState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_SpentCoin);
-            if (t == typeof(ValidatorState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Validator);
-            if (t == typeof(AssetState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Asset);
-            if (t == typeof(ContractState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Contract);
-            if (t == typeof(StorageItem)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Storage);
-            throw new NotSupportedException();
+            if (t == typeof(AccountState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Account));
+            if (t == typeof(UnspentCoinState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Coin));
+            if (t == typeof(SpentCoinState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_SpentCoin));
+            if (t == typeof(ValidatorState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Validator));
+            if (t == typeof(AssetState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Asset));
+            if (t == typeof(ContractState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Contract));
+            if (t == typeof(StorageItem)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Storage));
+            TR.Exit(); throw new NotSupportedException();
         }
 
         public override Transaction GetTransaction(UInt256 hash, out int height)
         {
-            return GetTransaction(ReadOptions.Default, hash, out height);
+            TR.Enter();
+            return TR.Exit(GetTransaction(ReadOptions.Default, hash, out height));
         }
 
         private Transaction GetTransaction(ReadOptions options, UInt256 hash, out int height)
         {
+            TR.Enter();
             Slice value;
             if (db.TryGet(options, SliceBuilder.Begin(DataEntryPrefix.DATA_Transaction).Add(hash), out value))
             {
                 byte[] data = value.ToArray();
                 height = data.ToInt32(0);
-                return Transaction.DeserializeFrom(data, sizeof(uint));
+                return TR.Exit(Transaction.DeserializeFrom(data, sizeof(uint)));
             }
             else
             {
                 height = -1;
-                return null;
+                return TR.Exit((Transaction) null);
             }
         }
 
         public override Dictionary<ushort, SpentCoin> GetUnclaimed(UInt256 hash)
         {
+            TR.Enter();
             int height;
             Transaction tx = GetTransaction(ReadOptions.Default, hash, out height);
             if (tx == null) return null;
             SpentCoinState state = db.TryGet<SpentCoinState>(ReadOptions.Default, DataEntryPrefix.ST_SpentCoin, hash);
             if (state != null)
             {
-                return state.Items.ToDictionary(p => p.Key, p => new SpentCoin
+                return TR.Exit(state.Items.ToDictionary(p => p.Key, p => new SpentCoin
                 {
                     Output = tx.Outputs[p.Key],
                     StartHeight = (uint)height,
                     EndHeight = p.Value
-                });
+                }));
             }
             else
             {
-                return new Dictionary<ushort, SpentCoin>();
+                return TR.Exit(new Dictionary<ushort, SpentCoin>());
             }
         }
 
         public override TransactionOutput GetUnspent(UInt256 hash, ushort index)
         {
+            TR.Enter();
             ReadOptions options = new ReadOptions();
             using (options.Snapshot = db.GetSnapshot())
             {
                 UnspentCoinState state = db.TryGet<UnspentCoinState>(options, DataEntryPrefix.ST_Coin, hash);
-                if (state == null) return null;
-                if (index >= state.Items.Length) return null;
-                if (state.Items[index].HasFlag(CoinState.Spent)) return null;
+                if (state == null) return TR.Exit((TransactionOutput) null);
+                if (index >= state.Items.Length) return TR.Exit((TransactionOutput) null);
+                if (state.Items[index].HasFlag(CoinState.Spent)) return TR.Exit((TransactionOutput)null);
                 int height;
-                return GetTransaction(options, hash, out height).Outputs[index];
+                return TR.Exit(GetTransaction(options, hash, out height).Outputs[index]);
             }
         }
 
         public override IEnumerable<TransactionOutput> GetUnspent(UInt256 hash)
         {
+            TR.Enter();
             ReadOptions options = new ReadOptions();
             using (options.Snapshot = db.GetSnapshot())
             {
@@ -428,29 +443,31 @@ namespace Neo.Implementations.Blockchains.LevelDB
 
                     }
                 }
-                return outputs;
+                return TR.Exit(outputs);
             }
         }
 
         public override bool IsDoubleSpend(Transaction tx)
         {
-            if (tx.Inputs.Length == 0) return false;
+            TR.Enter();
+            if (tx.Inputs.Length == 0) return TR.Exit(false);
             ReadOptions options = new ReadOptions();
             using (options.Snapshot = db.GetSnapshot())
             {
                 foreach (var group in tx.Inputs.GroupBy(p => p.PrevHash))
                 {
                     UnspentCoinState state = db.TryGet<UnspentCoinState>(options, DataEntryPrefix.ST_Coin, group.Key);
-                    if (state == null) return true;
+                    if (state == null) return TR.Exit(true);
                     if (group.Any(p => p.PrevIndex >= state.Items.Length || state.Items[p.PrevIndex].HasFlag(CoinState.Spent)))
-                        return true;
+                        return TR.Exit(true);
                 }
             }
-            return false;
+            return TR.Exit(false);
         }
 
         private void OnAddHeader(Header header, WriteBatch batch)
         {
+            TR.Enter();
             header_index.Add(header.Hash);
             while ((int)header.Index - 2000 >= stored_header_count)
             {
@@ -465,10 +482,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
             }
             batch.Put(SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(header.Hash), SliceBuilder.Begin().Add(0L).Add(header.ToArray()));
             batch.Put(SliceBuilder.Begin(DataEntryPrefix.SYS_CurrentHeader), SliceBuilder.Begin().Add(header.Hash).Add(header.Index));
+            TR.Exit();
         }
 
         private void Persist(Block block)
         {
+            TR.Enter();
             WriteBatch batch = new WriteBatch();
             DbCache<UInt160, AccountState> accounts = new DbCache<UInt160, AccountState>(db, DataEntryPrefix.ST_Account, batch);
             DbCache<UInt256, UnspentCoinState> unspentcoins = new DbCache<UInt256, UnspentCoinState>(db, DataEntryPrefix.ST_Coin, batch);
@@ -642,10 +661,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
             batch.Put(SliceBuilder.Begin(DataEntryPrefix.SYS_CurrentBlock), SliceBuilder.Begin().Add(block.Hash).Add(block.Index));
             db.Write(WriteOptions.Default, batch);
             current_block_height = block.Index;
+            TR.Exit();
         }
 
         private void PersistBlocks()
         {
+            TR.Enter();
             while (!disposed)
             {
                 new_block_event.WaitOne();
@@ -681,6 +702,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     OnPersistUnlocked(block);
                 }
             }
+            TR.Exit();
         }
     }
 }
