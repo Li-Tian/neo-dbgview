@@ -1,4 +1,5 @@
 ﻿using System;
+using DbgViewTR;
 
 namespace Neo.IO.Caching
 {
@@ -15,7 +16,9 @@ namespace Neo.IO.Caching
         /// <param name="type">Type</param>
         public ReflectionCacheAttribute(Type type)
         {
+            TR.Enter();
             Type = type;
+            TR.Exit();
         }
     }
 }

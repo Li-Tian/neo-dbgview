@@ -1,4 +1,5 @@
 ﻿using Neo.Network;
+using DbgViewTR;
 
 namespace Neo.IO.Caching
 {
@@ -11,7 +12,8 @@ namespace Neo.IO.Caching
 
         protected override UInt256 GetKeyForItem(IInventory item)
         {
-            return item.Hash;
+            TR.Enter();
+            return TR.Exit(item.Hash);
         }
     }
 }

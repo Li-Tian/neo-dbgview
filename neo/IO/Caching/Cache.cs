@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using DbgViewTR;
 
 namespace Neo.IO.Caching
 {
@@ -59,20 +60,25 @@ namespace Neo.IO.Caching
 
         public Cache(int max_capacity)
         {
+            TR.Enter();
             this.max_capacity = max_capacity;
+            TR.Exit();
         }
 
         public void Add(TValue item)
         {
+            TR.Enter();
             TKey key = GetKeyForItem(item);
             lock (SyncRoot)
             {
                 AddInternal(key, item);
             }
+            TR.Exit();
         }
 
         private void AddInternal(TKey key, TValue item)
         {
+            TR.Enter();
             if (InnerDictionary.TryGetValue(key, out CacheItem cacheItem))
             {
                 OnAccess(cacheItem);
@@ -89,10 +95,12 @@ namespace Neo.IO.Caching
                 }
                 InnerDictionary.Add(key, new CacheItem(key, item));
             }
+            TR.Exit();
         }
 
         public void AddRange(IEnumerable<TValue> items)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 foreach (TValue item in items)
@@ -101,10 +109,12 @@ namespace Neo.IO.Caching
                     AddInternal(key, item);
                 }
             }
+            TR.Exit();
         }
 
         public void Clear()
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 foreach (CacheItem item_del in InnerDictionary.Values.ToArray())
@@ -112,64 +122,87 @@ namespace Neo.IO.Caching
                     RemoveInternal(item_del);
                 }
             }
+            TR.Exit();
         }
 
         public bool Contains(TKey key)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
-                if (!InnerDictionary.TryGetValue(key, out CacheItem cacheItem)) return false;
+                if (!InnerDictionary.TryGetValue(key, out CacheItem cacheItem)) return TR.Exit(false);
                 OnAccess(cacheItem);
-                return true;
+                return TR.Exit(true);
             }
         }
 
         public bool Contains(TValue item)
         {
-            return Contains(GetKeyForItem(item));
+            TR.Enter();
+            return TR.Exit(Contains(GetKeyForItem(item)));
         }
 
         public void CopyTo(TValue[] array, int arrayIndex)
         {
-            if (array == null) throw new ArgumentNullException();
-            if (arrayIndex < 0) throw new ArgumentOutOfRangeException();
-            if (arrayIndex + InnerDictionary.Count > array.Length) throw new ArgumentException();
+            TR.Enter();
+            if (array == null)
+            {
+                TR.Exit();
+                throw new ArgumentNullException();
+            }
+            if (arrayIndex < 0)
+            {
+                TR.Exit();
+                throw new ArgumentOutOfRangeException();
+            }
+            if (arrayIndex + InnerDictionary.Count > array.Length)
+            {
+                TR.Exit();
+                throw new ArgumentException();
+            }
             foreach (TValue item in this)
             {
                 array[arrayIndex++] = item;
             }
+            TR.Exit();
         }
 
         public void Dispose()
         {
+            TR.Enter();
             Clear();
+            TR.Exit();
         }
 
         public IEnumerator<TValue> GetEnumerator()
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 foreach (TValue item in InnerDictionary.Values.Select(p => p.Value))
                 {
-                    yield return item;
+                    yield return TR.Exit(item);
                 }
             }
+            TR.Exit();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return GetEnumerator();
+            TR.Enter();
+            return TR.Exit(GetEnumerator());
         }
 
         protected abstract TKey GetKeyForItem(TValue item);
 
         public bool Remove(TKey key)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
-                if (!InnerDictionary.TryGetValue(key, out CacheItem cacheItem)) return false;
+                if (!InnerDictionary.TryGetValue(key, out CacheItem cacheItem)) return TR.Exit(false);
                 RemoveInternal(cacheItem);
-                return true;
+                return TR.Exit(true);
             }
         }
 
@@ -177,32 +210,36 @@ namespace Neo.IO.Caching
 
         public bool Remove(TValue item)
         {
-            return Remove(GetKeyForItem(item));
+            TR.Enter();
+            return TR.Exit(Remove(GetKeyForItem(item)));
         }
 
         private void RemoveInternal(CacheItem item)
         {
+            TR.Enter();
             InnerDictionary.Remove(item.Key);
             IDisposable disposable = item.Value as IDisposable;
             if (disposable != null)
             {
                 disposable.Dispose();
             }
+            TR.Exit();
         }
 
         public bool TryGet(TKey key, out TValue item)
         {
+            TR.Enter();
             lock (SyncRoot)
             {
                 if (InnerDictionary.TryGetValue(key, out CacheItem cacheItem))
                 {
                     OnAccess(cacheItem);
                     item = cacheItem.Value;
-                    return true;
+                    return TR.Exit(true);
                 }
             }
             item = default(TValue);
-            return false;
+            return TR.Exit(false);
         }
     }
 }
