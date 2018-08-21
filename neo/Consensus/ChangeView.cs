@@ -19,7 +19,7 @@ namespace Neo.Consensus
         {
             TR.Enter();
             base.Deserialize(reader);
-            NewViewNumber = reader.ReadByte();
+            NewViewNumber = reader.ReadByte(); //读下一个字节
             if (NewViewNumber == 0) throw new FormatException();
             TR.Exit();
         }

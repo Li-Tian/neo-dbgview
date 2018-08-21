@@ -20,7 +20,7 @@ namespace Neo.Cryptography.ECC
         public bool IsInfinity
         {
            
-            get { TR.Enter();  TR.Exit(); return X == null && Y == null; }
+            get { TR.Enter(); TR.Exit(); return X == null && Y == null; }
 
         }
 
@@ -54,7 +54,7 @@ namespace Neo.Cryptography.ECC
             TR.Enter();
             if (ReferenceEquals(this, other)) return 0;
             int result = X.CompareTo(other.X);
-            if (result != 0) return result;
+            if (result != 0) return TR.Exit(result);
             return TR.Exit(Y.CompareTo(other.Y));
         }
 

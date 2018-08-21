@@ -40,10 +40,10 @@ namespace Neo.Consensus
             ConsensusMessage message = ReflectionCache.CreateInstance<ConsensusMessage>(data[0]);
             if (message == null) throw new FormatException();
 
-            using (MemoryStream ms = new MemoryStream(data, false))
+            using (MemoryStream ms = new MemoryStream(data, false)) //MemoryStream和BinaryReader的
             using (BinaryReader r = new BinaryReader(ms))
             {
-                message.Deserialize(r);
+                message.Deserialize(r); //only readsin 1 byte
             }
             return TR.Exit(message);
         }
