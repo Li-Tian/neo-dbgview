@@ -1,4 +1,5 @@
 ﻿using System;
+using DbgViewTR;
 
 namespace Neo.IO.Caching
 {
@@ -11,7 +12,9 @@ namespace Neo.IO.Caching
 
         protected override void OnAccess(CacheItem item)
         {
+            TR.Enter();
             item.Time = DateTime.Now;
+            TR.Exit();
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using DbgViewTR;
 
 namespace Neo.IO.Caching
 {
@@ -12,11 +13,14 @@ namespace Neo.IO.Caching
 
         protected MetaDataCache(Func<T> factory)
         {
+            TR.Enter();
             this.factory = factory;
+            TR.Exit();
         }
 
         public T Get()
         {
+            TR.Enter();
             if (Item == null)
             {
                 Item = TryGetInternal();
@@ -26,15 +30,16 @@ namespace Neo.IO.Caching
                 Item = factory?.Invoke() ?? new T();
                 State = TrackState.Added;
             }
-            return Item;
+            return TR.Exit(Item);
         }
 
         public T GetAndChange()
         {
+            TR.Enter();
             T item = Get();
             if (State == TrackState.None)
                 State = TrackState.Changed;
-            return item;
+            return TR.Exit(item);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Neo.VM;
+using DbgViewTR;
 
 namespace Neo.SmartContract
 {
@@ -9,7 +10,8 @@ namespace Neo.SmartContract
 
         public byte[] ToArray()
         {
-            return ScriptHash.ToArray();
+            TR.Enter();
+            return TR.Exit(ScriptHash.ToArray());
         }
     }
 }
