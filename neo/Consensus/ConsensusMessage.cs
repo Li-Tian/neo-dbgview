@@ -16,7 +16,9 @@ namespace Neo.Consensus
         public readonly ConsensusMessageType Type;
         public byte ViewNumber;
 
+        //Size equals to 33? 
         public int Size => sizeof(ConsensusMessageType) + sizeof(byte);
+
 
         protected ConsensusMessage(ConsensusMessageType type)
         {
