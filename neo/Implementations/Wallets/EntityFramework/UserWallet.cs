@@ -11,7 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security;
 using System.Security.Cryptography;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {

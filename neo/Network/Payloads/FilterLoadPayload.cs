@@ -2,7 +2,7 @@
 using Neo.IO;
 using System;
 using System.IO;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Network.Payloads
 {

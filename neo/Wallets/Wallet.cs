@@ -11,7 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using ECPoint = Neo.Cryptography.ECC.ECPoint;
 using VMArray = Neo.VM.Types.Array;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Wallets
 {

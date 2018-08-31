@@ -2,7 +2,7 @@
 using Neo.SmartContract;
 using Neo.VM;
 using System;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Wallets
 {

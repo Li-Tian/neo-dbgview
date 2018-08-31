@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Cryptography.ECC
 {

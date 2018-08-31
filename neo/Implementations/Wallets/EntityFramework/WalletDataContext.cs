@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {

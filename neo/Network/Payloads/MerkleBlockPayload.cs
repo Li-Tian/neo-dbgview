@@ -4,7 +4,7 @@ using Neo.IO;
 using System.Collections;
 using System.IO;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Network.Payloads
 {

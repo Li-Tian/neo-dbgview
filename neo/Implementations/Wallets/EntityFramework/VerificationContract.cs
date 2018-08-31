@@ -4,7 +4,7 @@ using Neo.VM;
 using System;
 using System.IO;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {

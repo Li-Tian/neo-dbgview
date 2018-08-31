@@ -1,5 +1,5 @@
 ﻿using System;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.IO.Caching
 {

@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using DbgViewTR;
+using NoDbgViewTR;
 
 
 namespace Neo.Cryptography.ECC

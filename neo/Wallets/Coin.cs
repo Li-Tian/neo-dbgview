@@ -1,6 +1,6 @@
 ﻿using Neo.Core;
 using System;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Wallets
 {

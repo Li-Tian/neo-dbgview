@@ -14,7 +14,7 @@ using System.Numerics;
 using System.Text;
 using VMArray = Neo.VM.Types.Array;
 using VMBoolean = Neo.VM.Types.Boolean;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract
 {

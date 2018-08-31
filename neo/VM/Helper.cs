@@ -8,7 +8,7 @@ using System.Linq;
 using System.Numerics;
 using VMArray = Neo.VM.Types.Array;
 using VMBoolean = Neo.VM.Types.Boolean;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.VM
 {

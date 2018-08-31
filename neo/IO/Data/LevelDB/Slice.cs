@@ -3,7 +3,7 @@ using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {

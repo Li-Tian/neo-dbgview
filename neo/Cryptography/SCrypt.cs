@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Security.Cryptography;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Cryptography
 {

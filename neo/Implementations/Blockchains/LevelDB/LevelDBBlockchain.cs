@@ -1,4 +1,4 @@
-﻿using DbgViewTR;
+﻿using NoDbgViewTR;
 using Neo.Core;
 using Neo.Cryptography;
 using Neo.Cryptography.ECC;

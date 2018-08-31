@@ -1,4 +1,4 @@
-﻿using DbgViewTR;
+﻿using NoDbgViewTR;
 using Neo.IO;
 using System;
 using System.IO;

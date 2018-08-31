@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Core
 {

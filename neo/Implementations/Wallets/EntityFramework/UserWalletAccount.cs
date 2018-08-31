@@ -1,5 +1,5 @@
 ﻿using Neo.Wallets;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Implementations.Wallets.EntityFramework
 {

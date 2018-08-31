@@ -1,7 +1,7 @@
 ﻿using Neo.Core;
 using Neo.IO.Caching;
 using Neo.VM;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract
 {

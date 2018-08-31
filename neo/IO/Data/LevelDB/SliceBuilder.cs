@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {

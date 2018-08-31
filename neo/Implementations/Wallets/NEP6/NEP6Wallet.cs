@@ -9,7 +9,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using UserWallet = Neo.Implementations.Wallets.EntityFramework.UserWallet;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Implementations.Wallets.NEP6
 {

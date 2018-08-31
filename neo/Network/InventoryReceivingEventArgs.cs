@@ -1,4 +1,4 @@
-﻿using DbgViewTR;
+﻿using NoDbgViewTR;
 using System.ComponentModel;
 
 namespace Neo.Network

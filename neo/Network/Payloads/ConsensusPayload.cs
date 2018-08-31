@@ -6,7 +6,7 @@ using Neo.SmartContract;
 using Neo.VM;
 using System;
 using System.IO;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Network.Payloads
 {

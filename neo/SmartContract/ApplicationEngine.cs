@@ -5,7 +5,7 @@ using Neo.VM.Types;
 using System.Collections;
 using System.Numerics;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract
 {

@@ -1,5 +1,5 @@
 ﻿using Neo.IO.Json;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Implementations.Wallets.NEP6
 {

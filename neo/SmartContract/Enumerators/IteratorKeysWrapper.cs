@@ -1,6 +1,6 @@
 ﻿using Neo.SmartContract.Iterators;
 using Neo.VM;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract.Enumerators
 {

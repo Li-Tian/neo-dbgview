@@ -3,7 +3,7 @@ using Neo.IO.Json;
 using Neo.VM;
 using System;
 using System.IO;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Core
 {

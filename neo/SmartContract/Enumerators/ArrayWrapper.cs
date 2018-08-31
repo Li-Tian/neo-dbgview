@@ -1,6 +1,6 @@
 ﻿using Neo.VM;
 using System.Collections.Generic;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract.Enumerators
 {

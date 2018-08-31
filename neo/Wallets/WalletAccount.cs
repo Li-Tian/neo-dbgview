@@ -1,5 +1,5 @@
 ﻿using Neo.SmartContract;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Wallets
 {

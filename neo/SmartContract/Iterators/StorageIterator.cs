@@ -1,7 +1,7 @@
 ﻿using Neo.Core;
 using Neo.VM;
 using System.Collections.Generic;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract.Iterators
 {

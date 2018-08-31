@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Plugins
 {

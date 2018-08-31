@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Numerics;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo
 {

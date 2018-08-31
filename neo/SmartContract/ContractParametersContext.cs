@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract
 {

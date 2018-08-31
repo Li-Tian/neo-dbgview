@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Neo.IO.Json;
 using System.Collections.Generic;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Plugins
 {

@@ -1,6 +1,6 @@
 ﻿using Neo.IO.Caching;
 using System;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {

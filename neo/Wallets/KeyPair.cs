@@ -5,7 +5,7 @@ using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Wallets
 {

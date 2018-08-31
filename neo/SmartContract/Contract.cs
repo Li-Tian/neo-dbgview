@@ -4,7 +4,7 @@ using Neo.VM;
 using Neo.Wallets;
 using System;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.SmartContract
 {

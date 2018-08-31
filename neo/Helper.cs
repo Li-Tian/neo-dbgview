@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo
 {

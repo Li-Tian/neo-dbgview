@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.IO.Json
 {

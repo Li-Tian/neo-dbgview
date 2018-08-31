@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 using System.Numerics;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Cryptography.ECC
 {

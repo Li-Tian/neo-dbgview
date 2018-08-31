@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.IO.Json
 {

@@ -1,7 +1,7 @@
 ﻿using Neo.IO;
 using Neo.IO.Json;
 using System.IO;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Core
 {

@@ -6,7 +6,7 @@ using Neo.Network.Payloads;
 using Neo.Wallets;
 using System.Collections.Generic;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Consensus
 {

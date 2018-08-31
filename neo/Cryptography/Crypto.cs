@@ -2,7 +2,7 @@
 using System;
 using System.Linq;
 using System.Security.Cryptography;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Cryptography
 {

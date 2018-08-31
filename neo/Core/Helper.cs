@@ -5,7 +5,7 @@ using Neo.Wallets;
 using System;
 using System.IO;
 using System.Linq;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Core
 {

@@ -1,5 +1,5 @@
 ﻿using System.IO;
-using DbgViewTR;
+using NoDbgViewTR;
 
 namespace Neo.Consensus
 {
