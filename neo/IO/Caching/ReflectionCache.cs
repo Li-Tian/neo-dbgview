@@ -16,6 +16,7 @@ namespace Neo.IO.Caching
             TR.Enter();
             TR.Exit();
         }
+                
         /// <summary>
         /// Constructor
         /// </summary>
@@ -52,6 +53,7 @@ namespace Neo.IO.Caching
             }
             return r;
         }
+                
         /// <summary>
         /// Create object from key
         /// </summary>
@@ -68,6 +70,7 @@ namespace Neo.IO.Caching
             // return null
             return TR.Exit(def);
         }
+                
         /// <summary>
         /// Create object from key
         /// </summary>

@@ -131,10 +131,10 @@ namespace Neo.Implementations.Blockchains.LevelDB
             }
             lock (header_index)
             {
-                if (block.Index - 1 >= header_index.Count) return TR.Exit(false);
+                if (block.Index - 1 >= header_index.Count) return false;
                 if (block.Index == header_index.Count)
                 {
-                    if (VerifyBlocks && !block.Verify()) return TR.Exit(false);
+                    if (VerifyBlocks && !block.Verify()) return false;
                     WriteBatch batch = new WriteBatch();
                     OnAddHeader(block.Header, batch);
                     db.Write(WriteOptions.Default, batch);
@@ -147,7 +147,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
 
         public void AddBlockDirectly(Block block)
         {
-            TR.Enter();
+            TR.Exit();
             if (block.Index != Height + 1)
                 throw new InvalidOperationException();
             if (block.Index == header_index.Count)
@@ -247,10 +247,18 @@ namespace Neo.Implementations.Blockchains.LevelDB
         public override UInt256 GetBlockHash(uint height)
         {
             TR.Enter();
-            if (current_block_height < height) return TR.Exit((UInt256)null);
+            if (current_block_height < height)
+            {
+                TR.Exit();
+                return (UInt256)null;
+            }
             lock (header_index)
             {
-                if (header_index.Count <= height) return TR.Exit((UInt256)null);
+                if (header_index.Count <= height)
+                {
+                    TR.Exit();
+                    return (UInt256)null;
+                }
                 return TR.Exit(header_index[(int)height]);
             }
         }
@@ -260,10 +268,18 @@ namespace Neo.Implementations.Blockchains.LevelDB
             TR.Enter();
             Slice value;
             if (!db.TryGet(options, SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(hash), out value))
-                return TR.Exit((Block)null);
+            {
+                TR.Exit();
+                return (Block)null;
+            }
+
             int height;
             Block block = Block.FromTrimmedData(value.ToArray(), sizeof(long), p => GetTransaction(options, p, out height));
-            if (block.Transactions.Length == 0) return TR.Exit((Block)null);
+            if (block.Transactions.Length == 0)
+            {
+                TR.Exit();
+                return (Block)null;
+            }
             return TR.Exit(block);
         }
 
@@ -286,7 +302,11 @@ namespace Neo.Implementations.Blockchains.LevelDB
             UInt256 hash;
             lock (header_index)
             {
-                if (header_index.Count <= height) return TR.Exit((Header) null);
+                if (header_index.Count <= height)
+                {
+                    TR.Exit();
+                    return null;
+                }
                 hash = header_index[(int)height];
             }
             return TR.Exit(GetHeader(hash));
@@ -302,7 +322,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
             }
             Slice value;
             if (!db.TryGet(ReadOptions.Default, SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(hash), out value))
-                return TR.Exit((Header)null);
+            {
+                TR.Enter();
+                TR.Exit();
+                return null;
+            }
+                
             return TR.Exit(Header.FromTrimmedData(value.ToArray(), sizeof(long)));
         }
 
@@ -316,11 +341,20 @@ namespace Neo.Implementations.Blockchains.LevelDB
         {
             TR.Enter();
             Header header = GetHeader(hash);
-            if (header == null) return TR.Exit((UInt256) null);
+            if (header == null)
+            {
+                TR.Exit();
+                return null;
+            }
+                
             lock (header_index)
             {
                 if (header.Index + 1 >= header_index.Count)
-                    return TR.Exit((UInt256) null);
+                {
+                    TR.Exit();
+                    return null;
+                }
+                    
                 return TR.Exit(header_index[(int)header.Index + 1]);
             }
         }
@@ -345,7 +379,8 @@ namespace Neo.Implementations.Blockchains.LevelDB
             TR.Enter();
             Type t = typeof(T);
             if (t == typeof(ValidatorsCountState)) return TR.Exit(new DbMetaDataCache<T>(db, DataEntryPrefix.IX_ValidatorsCount));
-            TR.Exit(); throw new NotSupportedException();
+            TR.Exit();
+            throw new NotSupportedException();
         }
 
         public override DataCache<TKey, TValue> GetStates<TKey, TValue>()
@@ -359,7 +394,8 @@ namespace Neo.Implementations.Blockchains.LevelDB
             if (t == typeof(AssetState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Asset));
             if (t == typeof(ContractState)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Contract));
             if (t == typeof(StorageItem)) return TR.Exit(new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Storage));
-            TR.Exit(); throw new NotSupportedException();
+            TR.Exit();
+            throw new NotSupportedException();
         }
 
         public override Transaction GetTransaction(UInt256 hash, out int height)
@@ -381,7 +417,8 @@ namespace Neo.Implementations.Blockchains.LevelDB
             else
             {
                 height = -1;
-                return TR.Exit((Transaction) null);
+                TR.Exit();
+                return null;
             }
         }
 
@@ -390,7 +427,11 @@ namespace Neo.Implementations.Blockchains.LevelDB
             TR.Enter();
             int height;
             Transaction tx = GetTransaction(ReadOptions.Default, hash, out height);
-            if (tx == null) return null;
+            if (tx == null)
+            {
+                TR.Exit();
+                return null;
+            }
             SpentCoinState state = db.TryGet<SpentCoinState>(ReadOptions.Default, DataEntryPrefix.ST_SpentCoin, hash);
             if (state != null)
             {
@@ -414,9 +455,21 @@ namespace Neo.Implementations.Blockchains.LevelDB
             using (options.Snapshot = db.GetSnapshot())
             {
                 UnspentCoinState state = db.TryGet<UnspentCoinState>(options, DataEntryPrefix.ST_Coin, hash);
-                if (state == null) return TR.Exit((TransactionOutput) null);
-                if (index >= state.Items.Length) return TR.Exit((TransactionOutput) null);
-                if (state.Items[index].HasFlag(CoinState.Spent)) return TR.Exit((TransactionOutput)null);
+                if (state == null)
+                {
+                    TR.Exit();
+                    return null;
+                }
+                if (index >= state.Items.Length)
+                {
+                    TR.Exit();
+                    return null;
+                }
+                if (state.Items[index].HasFlag(CoinState.Spent))
+                {
+                    TR.Exit();
+                    return null;
+                }
                 int height;
                 return TR.Exit(GetTransaction(options, hash, out height).Outputs[index]);
             }
@@ -573,11 +626,13 @@ namespace Neo.Implementations.Blockchains.LevelDB
                             Expiration = block.Index + 2 * 2000000,
                             IsFrozen = false
                         });
+                        TR.Exit();
                         break;
 #pragma warning restore CS0612
                     case IssueTransaction _:
                         foreach (TransactionResult result in tx.GetTransactionResults().Where(p => p.Amount < Fixed8.Zero))
                             assets.GetAndChange(result.AssetId).Available -= result.Amount;
+                        TR.Exit();
                         break;
                     case ClaimTransaction _:
                         foreach (CoinReference input in ((ClaimTransaction)tx).Claims)
@@ -585,10 +640,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
                             if (spentcoins.TryGet(input.PrevHash)?.Items.Remove(input.PrevIndex) == true)
                                 spentcoins.GetAndChange(input.PrevHash);
                         }
+                        TR.Exit();
                         break;
 #pragma warning disable CS0612
                     case EnrollmentTransaction tx_enrollment:
                         validators.GetAndChange(tx_enrollment.PublicKey, () => new ValidatorState(tx_enrollment.PublicKey)).Registered = true;
+                        TR.Exit();
                         break;
 #pragma warning restore CS0612
                     case StateTransaction tx_state:
@@ -597,11 +654,14 @@ namespace Neo.Implementations.Blockchains.LevelDB
                             {
                                 case StateType.Account:
                                     ProcessAccountStateDescriptor(descriptor, accounts, validators, validators_count);
+                                    TR.Exit();
                                     break;
                                 case StateType.Validator:
                                     ProcessValidatorStateDescriptor(descriptor, validators);
+                                    TR.Exit();
                                     break;
                             }
+                        TR.Exit();
                         break;
 #pragma warning disable CS0612
                     case PublishTransaction tx_publish:
@@ -617,6 +677,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
                             Email = tx_publish.Email,
                             Description = tx_publish.Description
                         });
+                        TR.Exit();
                         break;
 #pragma warning restore CS0612
                     case InvocationTransaction tx_invocation:
@@ -638,6 +699,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
                                 Notifications = service.Notifications.ToArray()
                             });
                         }
+                        TR.Exit();
                         break;
                 }
                 if (execution_results.Count > 0)
@@ -675,14 +737,22 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     UInt256 hash;
                     lock (header_index)
                     {
-                        if (header_index.Count <= current_block_height + 1) break;
+                        if (header_index.Count <= current_block_height + 1)
+                        {
+                            TR.Exit();
+                            break;
+                        }
                         hash = header_index[(int)current_block_height + 1];
                     }
                     Block block;
                     lock (block_cache)
                     {
                         if (!block_cache.TryGetValue(hash, out block))
+                        {
+                            TR.Exit();
                             break;
+                        }
+                            
                     }
 
                     VerificationCancellationToken.Cancel();

@@ -45,6 +45,10 @@ namespace Neo.Network.Payloads
             {
                 if (value.Length != 1) throw new ArgumentException();
                 Script = value[0];
+                TR.Log("{0}", Script.GetType().ToString());
+                TR.Log("{0}", value[0].GetType().ToString());
+                //FS: why value[0]，and what is this value? 保持接口统一？
+
             }
         }
 
