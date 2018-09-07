@@ -14,9 +14,8 @@ namespace Neo.IO.Data.LevelDB
 
         private DB(IntPtr handle)
         {
-            TR.Enter();
+            TR.Log(handle);
             this.handle = handle;
-            TR.Exit();
         }
 
         public void Dispose()
@@ -24,6 +23,7 @@ namespace Neo.IO.Data.LevelDB
             TR.Enter();
             if (handle != IntPtr.Zero)
             {
+                TR.Log(handle);
                 Native.leveldb_close(handle);
                 handle = IntPtr.Zero;
             }
@@ -57,26 +57,24 @@ namespace Neo.IO.Data.LevelDB
             }
             finally
             {
+                TR.Log(value);
                 if (value != IntPtr.Zero) Native.leveldb_free(value);
             }
         }
 
         public Snapshot GetSnapshot()
         {
-            TR.Enter();
-            return TR.Exit(new Snapshot(handle));
+            return TR.Log(new Snapshot(handle));
         }
 
         public Iterator NewIterator(ReadOptions options)
         {
-            TR.Enter();
-            return TR.Exit(new Iterator(Native.leveldb_create_iterator(handle, options.handle)));
+            return TR.Log(new Iterator(Native.leveldb_create_iterator(handle, options.handle)));
         }
 
         public static DB Open(string name)
         {
-            TR.Enter();
-            return TR.Exit(Open(name, Options.Default));
+            return TR.Log(Open(name, Options.Default));
         }
 
         public static DB Open(string name, Options options)
@@ -131,6 +129,7 @@ namespace Neo.IO.Data.LevelDB
             {
                 try
                 {
+                    TR.Log(retry);
                     IntPtr error;
                     Native.leveldb_write(handle, options.handle, write_batch.handle, out error);
                     NativeHelper.CheckError(error);

@@ -20,6 +20,7 @@ namespace Neo.IO.Data.LevelDB
             TR.Enter();
             if (handle != IntPtr.Zero)
             {
+                TR.Log();
                 Native.leveldb_release_snapshot(db, handle);
                 handle = IntPtr.Zero;
             }

@@ -16,8 +16,7 @@ namespace Neo.IO.Data.LevelDB
 
         public static IEnumerable<T> Find<T>(this DB db, ReadOptions options, byte prefix) where T : class, ISerializable, new()
         {
-            TR.Enter();
-            return TR.Exit(Find(db, options, SliceBuilder.Begin(prefix), (k, v) => v.ToArray().AsSerializable<T>()));
+            return TR.Log(Find(db, options, SliceBuilder.Begin(prefix), (k, v) => v.ToArray().AsSerializable<T>()));
         }
 
         public static IEnumerable<T> Find<T>(this DB db, ReadOptions options, Slice prefix, Func<Slice, Slice, T> resultSelector)
@@ -32,7 +31,7 @@ namespace Neo.IO.Data.LevelDB
                     byte[] y = prefix.ToArray();
                     if (x.Length < y.Length) break;
                     if (!x.Take(y.Length).SequenceEqual(y)) break;
-                    yield return TR.Exit(resultSelector(key, it.Value()));
+                    yield return TR.Log(resultSelector(key, it.Value()));
                 }
             }
             TR.Exit();
@@ -63,8 +62,7 @@ namespace Neo.IO.Data.LevelDB
             Slice slice;
             if (!db.TryGet(options, SliceBuilder.Begin(prefix).Add(key), out slice))
             {
-                TR.Exit();
-                return null;
+                return TR.Exit((T)null);
             }
             return TR.Exit(slice.ToArray().AsSerializable<T>());
         }
@@ -75,8 +73,7 @@ namespace Neo.IO.Data.LevelDB
             Slice slice;
             if (!db.TryGet(options, SliceBuilder.Begin(prefix).Add(key), out slice))
             {
-                TR.Exit();
-                return null;
+                return TR.Exit((T)null);
             }
             return TR.Exit(resultSelector(slice));
         }

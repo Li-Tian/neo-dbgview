@@ -1,4 +1,5 @@
 ﻿using System;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -11,6 +12,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_create_if_missing(handle, value);
             }
         }
@@ -19,6 +21,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_error_if_exists(handle, value);
             }
         }
@@ -27,6 +30,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_paranoid_checks(handle, value);
             }
         }
@@ -35,6 +39,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_write_buffer_size(handle, (UIntPtr)value);
             }
         }
@@ -43,6 +48,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_max_open_files(handle, value);
             }
         }
@@ -51,6 +57,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_block_size(handle, (UIntPtr)value);
             }
         }
@@ -59,6 +66,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_block_restart_interval(handle, value);
             }
         }
@@ -67,6 +75,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_compression(handle, value);
             }
         }
@@ -75,12 +84,14 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_options_set_filter_policy(handle, value);
             }
         }
 
         ~Options()
         {
+            TR.Log(handle);
             Native.leveldb_options_destroy(handle);
         }
     }

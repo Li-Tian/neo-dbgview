@@ -1,4 +1,5 @@
 ﻿using System;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -11,12 +12,14 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_writeoptions_set_sync(handle, value);
             }
         }
 
         ~WriteOptions()
         {
+            TR.Log(handle);
             Native.leveldb_writeoptions_destroy(handle);
         }
     }

@@ -9,9 +9,8 @@ namespace Neo.IO.Data.LevelDB
 
         internal Iterator(IntPtr handle)
         {
-            TR.Enter();
+            TR.Log(handle);
             this.handle = handle;
-            TR.Exit();
         }
 
         private void CheckError()
@@ -61,29 +60,25 @@ namespace Neo.IO.Data.LevelDB
 
         public void Seek(Slice target)
         {
-            TR.Enter();
+            TR.Log(target);
             Native.leveldb_iter_seek(handle, target.buffer, (UIntPtr)target.buffer.Length);
-            TR.Exit();
         }
 
         public void SeekToFirst()
         {
-            TR.Enter();
+            TR.Log();
             Native.leveldb_iter_seek_to_first(handle);
-            TR.Exit();
         }
 
         public void SeekToLast()
         {
-            TR.Enter();
+            TR.Log();
             Native.leveldb_iter_seek_to_last(handle);
-            TR.Exit();
         }
 
         public bool Valid()
         {
-            TR.Enter();
-            return TR.Exit(Native.leveldb_iter_valid(handle));
+            return TR.Log(Native.leveldb_iter_valid(handle));
         }
 
         public Slice Value()

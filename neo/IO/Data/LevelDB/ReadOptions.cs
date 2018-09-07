@@ -1,4 +1,5 @@
 ﻿using System;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -11,6 +12,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_readoptions_set_verify_checksums(handle, value);
             }
         }
@@ -19,6 +21,7 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_readoptions_set_fill_cache(handle, value);
             }
         }
@@ -27,12 +30,14 @@ namespace Neo.IO.Data.LevelDB
         {
             set
             {
+                TR.Log(value);
                 Native.leveldb_readoptions_set_snapshot(handle, value.handle);
             }
         }
 
         ~ReadOptions()
         {
+            TR.Log(handle);
             Native.leveldb_readoptions_destroy(handle);
         }
     }

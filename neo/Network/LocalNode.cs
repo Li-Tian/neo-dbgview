@@ -657,8 +657,14 @@ namespace Neo.Network
         private async Task ProcessWebSocketAsync(HttpContext context)
         {
             TR.Enter();
-            if (!context.WebSockets.IsWebSocketRequest) return;
+            if (!context.WebSockets.IsWebSocketRequest)
+            {
+                TR.Exit();
+                return;
+            }
+            IndentContext ic = TR.SaveContextAndShuffle();
             WebSocket ws = await context.WebSockets.AcceptWebSocketAsync();
+            TR.RestoreContext(ic);
             WebSocketRemoteNode remoteNode = new WebSocketRemoteNode(this, ws, new IPEndPoint(context.Connection.RemoteIpAddress, context.Connection.RemotePort));
             OnConnected(remoteNode);
             TR.Exit();

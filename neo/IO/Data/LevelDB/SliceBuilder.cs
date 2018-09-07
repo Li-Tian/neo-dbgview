@@ -11,6 +11,7 @@ namespace Neo.IO.Data.LevelDB
 
         private SliceBuilder()
         {
+            TR.Log();
         }
 
         public SliceBuilder Add(byte value)

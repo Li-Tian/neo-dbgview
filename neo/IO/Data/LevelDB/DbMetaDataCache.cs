@@ -12,6 +12,7 @@ namespace Neo.IO.Data.LevelDB
         public DbMetaDataCache(DB db, byte prefix, Func<T> factory = null)
             : base(factory)
         {
+            TR.Log();
             this.db = db;
             this.prefix = prefix;
         }
@@ -19,6 +20,7 @@ namespace Neo.IO.Data.LevelDB
         public void Commit(WriteBatch batch)
         {
             TR.Enter();
+            TR.Log(State);
             switch (State)
             {
                 case TrackState.Added:
@@ -37,8 +39,7 @@ namespace Neo.IO.Data.LevelDB
             TR.Enter();
             if (!db.TryGet(ReadOptions.Default, prefix, out Slice slice))
             {
-                TR.Exit();
-                return null;
+                return TR.Exit((T)null);
             }
             return TR.Exit(slice.ToArray().AsSerializable<T>());
         }

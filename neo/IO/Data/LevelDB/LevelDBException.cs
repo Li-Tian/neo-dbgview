@@ -1,4 +1,5 @@
 ﻿using System.Data.Common;
+using NoDbgViewTR;
 
 namespace Neo.IO.Data.LevelDB
 {
@@ -7,6 +8,7 @@ namespace Neo.IO.Data.LevelDB
         internal LevelDBException(string message)
             : base(message)
         {
+            TR.Log(message);
         }
     }
 }

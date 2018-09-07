@@ -47,14 +47,12 @@ namespace Neo.IO.Data.LevelDB
 
         public override int GetHashCode()
         {
-            TR.Enter();
-            return TR.Exit((int)buffer.Murmur32(0));
+            return TR.Log((int)buffer.Murmur32(0));
         }
 
         public byte[] ToArray()
         {
-            TR.Enter();
-            return TR.Exit(buffer ?? new byte[0]);
+            return TR.Log(buffer ?? new byte[0]);
         }
 
         unsafe public bool ToBoolean()
@@ -84,6 +82,7 @@ namespace Neo.IO.Data.LevelDB
 
         unsafe public double ToDouble()
         {
+            TR.Enter();
             if (buffer.Length != sizeof(double))
             {
                 TR.Exit();
@@ -187,6 +186,7 @@ namespace Neo.IO.Data.LevelDB
 
         unsafe public ulong ToUInt64()
         {
+            TR.Enter();
             if (buffer.Length != sizeof(ulong))
             {
                 TR.Exit();
@@ -200,110 +200,92 @@ namespace Neo.IO.Data.LevelDB
 
         public static implicit operator Slice(byte[] data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = data });
+            return TR.Log(new Slice { buffer = data });
         }
 
         public static implicit operator Slice(bool data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(byte data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = new[] { data } });
+            return TR.Log(new Slice { buffer = new[] { data } });
         }
 
         public static implicit operator Slice(double data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(short data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(int data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(long data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(float data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(string data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = Encoding.UTF8.GetBytes(data) });
+            return TR.Log(new Slice { buffer = Encoding.UTF8.GetBytes(data) });
         }
 
         public static implicit operator Slice(ushort data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(uint data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static implicit operator Slice(ulong data)
         {
-            TR.Enter();
-            return TR.Exit(new Slice { buffer = BitConverter.GetBytes(data) });
+            return TR.Log(new Slice { buffer = BitConverter.GetBytes(data) });
         }
 
         public static bool operator <(Slice x, Slice y)
         {
-            TR.Enter();
-            return TR.Exit(x.CompareTo(y) < 0);
+            return TR.Log(x.CompareTo(y) < 0);
         }
 
         public static bool operator <=(Slice x, Slice y)
         {
-            TR.Enter();
-            return TR.Exit(x.CompareTo(y) <= 0);
+            return TR.Log(x.CompareTo(y) <= 0);
         }
 
         public static bool operator >(Slice x, Slice y)
         {
-            TR.Enter();
-            return TR.Exit(x.CompareTo(y) > 0);
+            return TR.Log(x.CompareTo(y) > 0);
         }
 
         public static bool operator >=(Slice x, Slice y)
         {
-            TR.Enter();
-            return TR.Exit(x.CompareTo(y) >= 0);
+            return TR.Log(x.CompareTo(y) >= 0);
         }
 
         public static bool operator ==(Slice x, Slice y)
         {
-            TR.Enter();
-            return TR.Exit(x.Equals(y));
+            return TR.Log(x.Equals(y));
         }
 
         public static bool operator !=(Slice x, Slice y)
         {
-            TR.Enter();
-            return TR.Exit(!x.Equals(y));
+            return TR.Log(!x.Equals(y));
         }
     }
 }
