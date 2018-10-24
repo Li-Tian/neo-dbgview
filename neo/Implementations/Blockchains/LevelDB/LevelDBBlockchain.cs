@@ -44,7 +44,9 @@ namespace Neo.Implementations.Blockchains.LevelDB
         public LevelDBBlockchain(string path)
         {
             TR.Enter();
+            TR.Log("header_index.Count : {0}", header_index.Count);
             header_index.Add(GenesisBlock.Hash);
+            TR.Log("header_index.Count : {0}", header_index.Count);
             Version version;
             Slice value;
             db = DB.Open(path, new Options { CreateIfMissing = true });
@@ -62,10 +64,11 @@ namespace Neo.Implementations.Blockchains.LevelDB
                 }
                 foreach (UInt256 hash in db.Find(options, SliceBuilder.Begin(DataEntryPrefix.IX_HeaderHashList), (k, v) =>
                 {
+                    TR.Log(Neo.Helper.ToHexString(k.ToArray()));
                     using (MemoryStream ms = new MemoryStream(v.ToArray(), false))
                     using (BinaryReader r = new BinaryReader(ms))
                     {
-                        return TR.Exit(new
+                        return TR.Log(new
                         {
                             Index = k.ToArray().ToUInt32(1),
                             Hashes = r.ReadSerializableArray<UInt256>()
@@ -79,6 +82,9 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     }
                     stored_header_count++;
                 }
+                TR.Log("stored_header_count : {0}", stored_header_count);
+                TR.Log("header_index.Count : {0}", header_index.Count);
+                TR.Log("current_header_height : {0}", current_header_height);
                 if (stored_header_count == 0)
                 {
                     Header[] headers = db.Find(options, SliceBuilder.Begin(DataEntryPrefix.DATA_Block), (k, v) => Header.FromTrimmedData(v.ToArray(), sizeof(long))).OrderBy(p => p.Index).ToArray();
@@ -323,7 +329,6 @@ namespace Neo.Implementations.Blockchains.LevelDB
             Slice value;
             if (!db.TryGet(ReadOptions.Default, SliceBuilder.Begin(DataEntryPrefix.DATA_Block).Add(hash), out value))
             {
-                TR.Enter();
                 TR.Exit();
                 return null;
             }
@@ -739,7 +744,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     {
                         if (header_index.Count <= current_block_height + 1)
                         {
-                            TR.Exit();
+                            TR.Log();
                             break;
                         }
                         hash = header_index[(int)current_block_height + 1];
@@ -749,7 +754,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
                     {
                         if (!block_cache.TryGetValue(hash, out block))
                         {
-                            TR.Exit();
+                            TR.Log();
                             break;
                         }
                             

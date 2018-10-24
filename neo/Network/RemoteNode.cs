@@ -77,6 +77,15 @@ namespace Neo.Network
         public void EnqueueMessage(string command, ISerializable payload = null)
         {
             TR.Enter();
+            if (command == "inv")
+            {
+                InvPayload inv = (InvPayload) payload;
+                TR.Log("message : {0} to {1} with {2}", command, RemoteEndpoint.Address, inv.Hashes[0].ToString());
+            }
+            else
+            {
+                TR.Log("message : {0} to {1}", command, RemoteEndpoint.Address);
+            }
             bool is_single = false;
             switch (command)
             {
@@ -323,7 +332,7 @@ namespace Neo.Network
         private void OnMessageReceived(Message message)
         {
             TR.Enter();
-            TR.Log("OnMessageReceived : {0}", message);
+            TR.Log("message : {0} from {1}", message.Command, RemoteEndpoint.Address);
             switch (message.Command)
             {
                 case "addr":
@@ -443,6 +452,7 @@ namespace Neo.Network
             IndentContext ic = TR.SaveContextAndShuffle();
             try
             {
+                TR.Log("message : {0} to {1}", "version", RemoteEndpoint.Address);
                 messageSent = await SendMessageAsync(Message.Create("version", VersionPayload.Create(localNode.Port, localNode.Nonce, localNode.UserAgent)));
             }
             finally
@@ -519,6 +529,7 @@ namespace Neo.Network
             try
             {
                 messageSent = await SendMessageAsync(Message.Create("verack"));
+                TR.Log("message : {0} to {1}", "verack", RemoteEndpoint.Address);
             }
             finally
             {
@@ -544,6 +555,7 @@ namespace Neo.Network
                 TR.Exit();
                 return;
             }
+            TR.Log("message : {0} from {1}", message.Command, RemoteEndpoint.Address);
             if (message.Command != "verack")
             {
                 TR.Log();
@@ -553,8 +565,9 @@ namespace Neo.Network
             }
             if (Blockchain.Default?.HeaderHeight < Version.StartHeight)
             {
-                TR.Log();
+                TR.Log("local header height : {0}, remote height : {1}, {2}", Blockchain.Default?.HeaderHeight, Version.StartHeight, RemoteEndpoint.Address);
                 EnqueueMessage("getheaders", GetBlocksPayload.Create(Blockchain.Default.CurrentHeaderHash));
+                TR.Log("current header hash : {0}", Blockchain.Default.CurrentHeaderHash.ToString());
             }
             StartSendLoop();
             while (disposed == 0)
@@ -563,6 +576,7 @@ namespace Neo.Network
                 {
                     if (missions.Count == 0 && Blockchain.Default.Height < Version.StartHeight)
                     {
+                        TR.Log("local height : {0}, remote height : {1}, {2}", Blockchain.Default.Height, Version.StartHeight, RemoteEndpoint.Address);
                         EnqueueMessage("getblocks", GetBlocksPayload.Create(Blockchain.Default.CurrentBlockHash));
                     }
                 }
